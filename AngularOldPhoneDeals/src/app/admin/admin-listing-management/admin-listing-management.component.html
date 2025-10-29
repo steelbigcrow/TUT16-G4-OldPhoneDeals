@@ -1,0 +1,256 @@
+
+<h1>Listing Management</h1>
+
+<div class="search-container">
+  <form [formGroup]="searchForm" class="search-form mb-3">
+    <input
+      type="text"
+      formControlName="searchTerm"
+      placeholder="Search by name or email..."
+      class="search-input"
+    >
+    <select formControlName="brand" class="search-select">
+      <option value="">All Brands</option>
+      <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>
+    </select>
+
+
+    <!-- sorting dropdown -->
+    <select formControlName="sortBy" class="search-select ms-2">
+      <option value="">Sort By</option>
+      <option value="priceAsc">Price: Low to High</option>
+      <option value="priceDesc">Price: High to Low</option>
+      <option value="dateAsc">Date: Oldest First</option>
+      <option value="dateDesc">Date: Newest First</option>
+    </select>
+
+
+  </form>
+</div>
+
+
+
+<div class="listing-management">
+  <div class="header">
+<!--    <form [formGroup]="searchForm" class="search-form">-->
+<!--      <div class="search-inputs">-->
+<!--        <input-->
+<!--          type="text"-->
+<!--          formControlName="searchTerm"-->
+<!--          placeholder="Search listings by title or brand..."-->
+<!--        >-->
+<!--        <select formControlName="brand">-->
+<!--          <option value="">All Brands</option>-->
+<!--          <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>-->
+<!--        </select>-->
+<!--      </div>-->
+<!--    </form>-->
+  <div class="content">
+  </div>
+    <table class="listings-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Brand</th>
+          <th>Image</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Seller</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Reviews</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let listing of paginatedListings">
+          <td>{{ listing.title }}</td>
+          <td>{{ listing.brand }}</td>
+          <td>
+            <img [src]="getImageUrl(listing.image)" alt="listing Image" width="100" class="img-fluid" />
+          </td>
+          <td>${{ listing.price.toFixed(2) }}</td>
+          <td>{{ listing.stock }}</td>
+          <td>{{ listing.seller.firstName }} {{ listing.seller.lastName }}</td>
+          <td>
+              <span
+
+                [style.color]="listing.isDisabled ? 'red' : 'blue'">
+                {{ listing.isDisabled ? 'Disabled' : 'Enabled' }}
+              </span>
+          </td>
+          <td>{{ listing.createdAt | date:'medium' }}</td>
+
+          <td>
+            <ng-container *ngIf="Array.isArray(listing.reviews) && listing.reviews.length > 0; else noReviews">
+              <div *ngFor="let review of listing.reviews.slice(0, 1)">
+                <p><strong>Rating:</strong> {{ review.rating }} ★</p>
+
+                <!-- if the review is longer than 100 characters, automatically omit the review-->
+                <p class="mb-1">
+                  <ng-container *ngIf="!isExpanded(review._id); else fullComment">
+                    {{ review.comment | slice:0:100 }}<span *ngIf="review.comment.length > 100">...</span>
+                  </ng-container>
+                  <ng-template #fullComment>
+                    {{ review.comment }}
+                  </ng-template>
+                </p>
+
+                <!-- review omit switch button -->
+                <div *ngIf="review.comment.length > 100">
+                  <button class="btn btn-link p-0" (click)="toggleReview(review._id)">
+                    {{ isExpanded(review._id) ? 'Show Less' : 'Show More' }}
+                  </button>
+                </div>
+
+
+
+
+                <p><small>{{ review.createdAt | date:'short' }}</small></p>
+              </div>
+              <button
+                *ngIf="listing.reviews.length > 1"
+                (click)="viewAllReviews(listing)">
+                View all ({{ listing.reviews.length }})
+              </button>
+            </ng-container>
+
+            <ng-template #noReviews>
+              <p>No reviews</p>
+            </ng-template>
+          </td>
+
+          <!-- right edit tool -->
+          <td class="actions">
+            <!--edit tool-->
+            <button class="edit-btn" (click)="editListing(listing)">Edit</button>
+
+            <!--enable or disable tool-->
+            <button
+              class="toggle-btn"
+              [class.disable]="listing.isDisabled"
+              (click)="toggleListingStatus(listing)">
+              {{ listing.isDisabled ? 'Enable' : 'Disable' }}
+            </button>
+
+            <!--delete tool-->
+            <button class="delete-btn" (click)="deleteListing(listing)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination
+    [currentPage]="currentPage"
+    [totalPages]="totalPages"
+    (pageChange)="onPageChange($event)">
+  </app-pagination>
+
+  <!-- Edit Listing Modal -->
+  <div class="modal" *ngIf="isEditing && selectedListing">
+    <div class="modal-content">
+      <h2>Edit Listing</h2>
+      <form (ngSubmit)="saveListing()">
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input
+            type="text"
+            id="title"
+            [(ngModel)]="selectedListing.title"
+            name="title"
+            required
+          >
+        </div>
+        <div class="form-group">
+          <label for="brand">Brand</label>
+          <select
+            id="brand"
+            [(ngModel)]="selectedListing.brand"
+            name="brand"
+            required
+          >
+            <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>
+          </select>
+        </div>
+
+        <!-- file upload part -->
+        <!-- set lang attribute to en to force use english -->
+        <div class="mb-3" lang="en">
+          <label class="form-label">Image</label>
+          <input type="file" class="form-control" (change)="onFileSelected($event)" name="image" required>
+        </div>
+
+        <div class="form-group">
+          <label for="price">Price</label>
+          <input
+            type="number"
+            id="price"
+            [(ngModel)]="selectedListing.price"
+            name="price"
+            step="0.01"
+            required
+          >
+        </div>
+
+
+        <div class="form-group">
+          <label for="stock">Stock</label>
+          <input
+            type="number"
+            id="stock"
+            [(ngModel)]="selectedListing.stock"
+            name="stock"
+            required
+          >
+        </div>
+        <div class="form-actions">
+          <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+          <button type="submit" class="save-btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Review Modal -->
+  <div class="modal" *ngIf="selectedReviewListing">
+    <div class="modal-content">
+      <h2>All Reviews</h2>
+
+
+      <div *ngIf="selectedReviewListing.reviews?.length > 0; else noReviews">
+        <div *ngFor="let review of selectedReviewListing.reviews" class="card mb-3" [ngClass]="{'bg-light': review.isHidden}">
+          <div class="card-body">
+            <div class="d-flex flex-column flex-md-row justify-content-between">
+              <!-- left information -->
+              <div class="flex-grow-1">
+                <!-- print the reviewer's name -->
+                <h5 class="card-title">
+                  {{ review.reviewerId?.firstName + ' ' + review.reviewerId?.lastName || 'Anonymous' }}
+                </h5>
+                <p class="text-muted mb-1" *ngIf="review.phoneTitle">For phone: {{ review.phoneTitle }}</p>
+                <!-- star rating -->
+                <div class="rating mb-2">
+                <span *ngFor="let star of [1,2,3,4,5]">
+                  <i class="bi" [ngClass]="{
+                    'bi-star-fill text-warning': star <= review.rating,
+                    'bi-star': star > review.rating
+                  }"></i>
+                </span>
+                </div>
+                <!-- comment content -->
+                <p class="mb-1">{{ review.comment }}</p>
+                <p class="text-muted mb-0"><small>{{ review.createdAt | date:'medium' }}</small></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="close-btn" (click)="closeReviewModal()">×</button>
+      <ng-template #noReviews>
+        <p>No reviews available.</p>
+      </ng-template>
+    </div>
+  </div>
+
+</div>

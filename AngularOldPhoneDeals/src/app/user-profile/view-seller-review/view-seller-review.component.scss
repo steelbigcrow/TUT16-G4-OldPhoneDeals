@@ -1,0 +1,22 @@
+#viewSellerReviewPage {
+    .review-item {
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: translateX(5px);
+      }
+
+      .rating {
+        color: #ffd700 !important; // 金色星级
+        .fa-star {
+          margin-right: 2px;
+        }
+      }
+    }
+  }
+.text-muted {
+  color: rgba(0, 0, 0, 0.5); /* 更淡的灰色 */
+}
+

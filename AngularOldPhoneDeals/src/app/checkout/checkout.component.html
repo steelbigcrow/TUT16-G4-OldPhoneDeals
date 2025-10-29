@@ -1,0 +1,110 @@
+<section id="checkoutPage">
+  <div class="container p-5">
+    <div class="row mt-5">
+      <div class="col-lg-8 offset-lg-2">
+        <!-- back button -->
+        <button class="btn btn-link mb-4" (click)="goBack()">← Back</button>
+        
+        <div class="card bg-light">
+          <div class="card-body">
+            <h4 class="text-center">Checkout</h4>
+            <hr>
+
+            <!-- Loading indicator -->
+            <div *ngIf="isLoading" class="text-center my-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div *ngIf="!isLoading && cartItems.length === 0" class="text-center py-5">
+              <p class="text-muted">Your cart is empty.</p>
+            </div>
+
+            <!-- shopping cart product list -->
+            <div *ngFor="let item of cartItems; let i = index" class="mb-4 p-3 border-bottom">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5>{{ item.title }}</h5>
+                  <div class="text-muted mb-2">Price: {{ item.price | currency }}</div>
+                  
+                  <!-- seller information -->
+                  <div class="text-muted mb-2" *ngIf="item.seller">
+                    Seller: {{ item.seller.firstName }} {{ item.seller.lastName }}
+                  </div>
+                  
+                  <!-- star rating -->
+                  <div class="mb-2" *ngIf="item.averageRating !== undefined">
+                    <ng-container *ngFor="let star of getStars(item.averageRating)">
+                      <i class="bi" [ngClass]="star ? 'bi-star-fill text-warning' : 'bi-star text-warning'"></i>
+                    </ng-container>
+                    <small class="text-muted ms-2">({{ item.reviewCount || 0 }} reviews)</small>
+                  </div>
+                  
+                  <!-- Quantity control -->
+                  <div class="d-flex align-items-center mt-2">
+                    <button class="btn btn-outline-secondary"
+                            (click)="updateQuantity(i, item.quantity - 1)">
+                      -
+                    </button>
+                    <span class="mx-3">{{ item.quantity }}</span>
+                    <button class="btn btn-outline-secondary"
+                            (click)="updateQuantity(i, item.quantity + 1)">
+                      +
+                    </button>
+                  </div>
+                  <div class="mt-2">
+                    Subtotal: {{ item.price * item.quantity | currency }}
+                  </div>
+                </div>
+                
+                <div>
+                  <button class="btn btn-danger btn-sm" (click)="removeItem(i)">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- total price -->
+            <div class="text-end h5 mt-4">
+              Total: {{ totalPrice | currency }}
+            </div>
+
+            <!-- shipping address input -->
+            <div class="mb-4">
+              <h5>Shipping Address</h5>
+              <div class="row">
+                <div class="col-md-12 mb-2">
+                  <input type="text" class="form-control" placeholder="Street" [(ngModel)]="address.street">
+                </div>
+                <div class="col-md-6 mb-2">
+                  <input type="text" class="form-control" placeholder="City" [(ngModel)]="address.city">
+                </div>
+                <div class="col-md-6 mb-2">
+                  <input type="text" class="form-control" placeholder="State" [(ngModel)]="address.state">
+                </div>
+                <div class="col-md-6 mb-2">
+                  <input type="text" class="form-control" placeholder="ZIP Code" [(ngModel)]="address.zip">
+                </div>
+                <div class="col-md-6 mb-2">
+                  <input type="text" class="form-control" placeholder="Country" [(ngModel)]="address.country">
+                </div>
+              </div>
+            </div>
+
+            <hr>
+            
+            <!-- confirm transaction button -->
+            <button class="btn btn-success w-100" 
+                    (click)="confirmTransaction()"
+                    [disabled]="cartItems.length === 0">
+              Confirm Order
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

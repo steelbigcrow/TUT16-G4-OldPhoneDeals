@@ -1,0 +1,31 @@
+<div class="card mb-3" [ngClass]="{'bg-light': review.isHidden}">
+  <div class="card-body">
+    <div class="d-flex justify-content-between">
+      <h5 class="card-title" [ngClass]="{'text-muted': review.isHidden}">{{ review.reviewerName }}</h5>
+      <div>
+        <span *ngFor="let star of [1, 2, 3, 4, 5]">
+          <i class="bi" [ngClass]="{'bi-star-fill text-warning': star <= review.rating, 'bi-star': star > review.rating}"></i>
+        </span>
+      </div>
+    </div>
+    <p class="card-text" [ngClass]="{'text-muted': review.isHidden}">
+      {{ isExpanded || review.comment.length <= 200 ? review.comment : (review.comment.substring(0, 200) + '...') }}
+      <button *ngIf="review.comment.length > 200" class="btn btn-link p-0 ms-1" (click)="toggleShowMore(); $event.preventDefault()">
+        {{ isExpanded ? 'Show less' : 'Read more' }}
+      </button>
+    </p>
+    <div class="mt-2 d-flex justify-content-between align-items-center">
+      <small class="text-muted" *ngIf="review.isHidden">
+        <i class="bi bi-eye-slash me-1"></i> This review is hidden
+      </small>
+      <div class="text-end ms-auto" *ngIf="isOwnerOrSeller">
+        <button class="btn btn-sm"
+                [ngClass]="{'btn-outline-danger': !review.isHidden, 'btn-outline-success': review.isHidden}"
+                (click)="toggleVisibility()">
+          <i class="bi" [ngClass]="{'bi-eye-slash': !review.isHidden, 'bi-eye': review.isHidden}"></i>
+          {{ review.isHidden ? 'Show Review' : 'Hide Review' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

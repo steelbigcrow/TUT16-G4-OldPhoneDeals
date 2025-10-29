@@ -1,0 +1,97 @@
+<!-- user-profile.component.html -->
+<section class="user-profile-page">
+  <div class="container">
+    <div class="row">
+      <!-- 左侧导航菜单 -->
+      <div class="col-md-3">
+        <nav class="nav flex-column">
+          <a
+            class="nav-link"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}"
+            routerLink="/user-profile"
+          >
+            <i class="bi bi-person-lines-fill me-2"></i>Profile Summary
+          </a>
+          <a
+            class="nav-link"
+            routerLinkActive="active"
+            routerLink="edit"
+          >
+            <i class="bi bi-pencil-square me-2"></i>Edit Profile
+          </a>
+          <a
+            class="nav-link"
+            routerLink="change-password"
+            routerLinkActive="active"
+          >
+            <i class="fas fa-lock me-2"></i>Change Password
+          </a>
+          <a
+            class="nav-link"
+            routerLink="manage-listings"
+            routerLinkActive="active"
+          >
+            <i class="fas fa-mobile-alt me-2"></i>Manage Listings
+          </a>
+          <a
+            class="nav-link"
+            routerLink="reviews"
+            routerLinkActive="active"
+          >
+            <i class="fas fa-star me-2"></i>Seller Reviews
+          </a>
+
+          <button
+            class="nav-link text-danger btn btn-link text-start w-100 d-flex align-items-center"
+            (click)="logout()"
+          >
+            <i class="fas fa-sign-out-alt me-2"></i>Logout
+          </button>
+
+        </nav>
+      </div>
+
+      <!-- 右侧内容区域 -->
+      <div class="col-md-9">
+        <div class="content-card">
+          <!-- 默认显示用户简介 -->
+          <div *ngIf="isProfileViewActive()" class="profile-summary">
+<!--            <h3 class="mb-4">{{ (user$ | async)?.firstName }} {{ (user$ | async)?.lastName }}'s Profile</h3>-->
+
+            <ng-container *ngIf="currentUser$ | async as user">
+              <h3 class="mb-4">{{ user?.firstName }} {{ user?.lastName }}'s Profile</h3>
+            </ng-container>
+
+          <div class="row">
+
+            <!-- 用户头像 -->
+          <div class="col-md-4">
+            <img
+              [src]="'https://ui-avatars.com/api/?name=User&background=random'"
+              class="img-thumbnail mb-3"
+              alt="用户头像">
+          </div>
+
+
+          <div class="col-md-8">
+            <dl class="row">
+              <dt class="col-sm-3">ID</dt>
+              <dd class="col-sm-9">{{ user?.id }}</dd>
+              <ng-container *ngIf="currentUser$ | async as user">
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">{{ user?.email }}</dd>
+              </ng-container>
+
+            </dl>
+          </div>
+            </div>
+          </div>
+
+          <!-- 子组件显示区域 -->
+          <router-outlet></router-outlet>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

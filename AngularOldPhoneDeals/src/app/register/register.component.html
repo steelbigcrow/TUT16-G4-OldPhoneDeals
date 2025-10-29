@@ -1,0 +1,88 @@
+<section id="registerPage">
+  <div class="container p-5">
+    <div class="row mt-5">
+      <div class="col-lg-4 offset-lg-4">
+        <div class="card bg-light">
+          <div class="card-body">
+            <h4 class="text-center">Sign Up</h4>
+            <hr>
+
+            <!-- registration success mask -->
+            <div *ngIf="successMessage && registeredEmail" class="text-center p-4">
+              <h5 class="text-success">Welcome to OldPhoneDeals!</h5>
+              <p>{{ successMessage }}</p>
+              <p>Please verify your email before logging in.</p>
+              <div class="d-flex justify-content-center mt-4">
+                <button class="btn btn-success me-2" (click)="navigateToLogin()">
+                  Go to Login
+                </button>
+                <button class="btn btn-outline-primary" (click)="navigateToHome()">
+                  Back to Home
+                </button>
+              </div>
+            </div>
+
+            <!-- registration form -->
+            <form *ngIf="!successMessage" (ngSubmit)="signUp()" #signUpForm="ngForm">
+              <!-- First Name -->
+              <div class="form-group">
+                <label>First Name</label>
+                <input type="text" name="firstName" class="form-control"
+                       [(ngModel)]="firstName" required #firstNameCtrl="ngModel" />
+                <div *ngIf="firstNameCtrl.invalid && firstNameCtrl.touched" class="text-danger">
+                  First name is required.
+                </div>
+              </div>
+              <!-- Last Name -->
+              <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" name="lastName" class="form-control"
+                       [(ngModel)]="lastName" required #lastNameCtrl="ngModel" />
+                <div *ngIf="lastNameCtrl.invalid && lastNameCtrl.touched" class="text-danger">
+                  Last name is required.
+                </div>
+              </div>
+              <!-- Email -->
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control"
+                       [(ngModel)]="email" required #emailCtrl="ngModel" />
+                <div *ngIf="emailCtrl.invalid && emailCtrl.touched" class="text-danger">
+                  Please enter a valid email.
+                </div>
+              </div>
+              <!-- Password -->
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" class="form-control"
+                       [(ngModel)]="password" required #passwordCtrl="ngModel" />
+                <div *ngIf="passwordCtrl.invalid && passwordCtrl.touched" class="text-danger">
+                  Password is required.
+                </div>
+              </div>
+              <!-- Confirm Password -->
+              <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" name="confirmPassword" class="form-control"
+                       [(ngModel)]="confirmPassword" required #confirmPasswordCtrl="ngModel" />
+                <div *ngIf="confirmPasswordCtrl.invalid && confirmPasswordCtrl.touched" class="text-danger">
+                  Please confirm your password.
+                </div>
+              </div>
+              <hr>
+              <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary" [disabled]="btnDisabled || !signUpForm.valid">
+                  Sign Up
+                </button>
+                <button type="button" class="btn btn-primary" (click)="navigateToLogin()">
+                  Back to Login
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

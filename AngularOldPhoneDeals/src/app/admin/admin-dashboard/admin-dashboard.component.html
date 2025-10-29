@@ -1,0 +1,32 @@
+<div class="admin-dashboard">
+  <main class="dashboard-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Total Users</h3>
+        <p class="stat-number">{{ stats.totalUsers }}</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Listings</h3>
+        <p class="stat-number">{{ stats.totalListings }}</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Reviews</h3>
+        <p class="stat-number">{{ stats.totalReviews }}</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Sales</h3>
+        <p class="stat-number">{{ stats.totalSales }}</p>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <h2>Quick Actions</h2>
+      <div class="action-buttons">
+        <button routerLink="/admin/users">Manage Users</button>
+        <button routerLink="/admin/listings">Manage Listings</button>
+        <button routerLink="/admin/reviews">Moderate Reviews</button>
+        <button routerLink="/admin/sales">View Sales</button>
+      </div>
+    </div>
+  </main>
+</div> 

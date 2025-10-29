@@ -1,0 +1,9 @@
+<div *ngIf="data.message" [ngClass]="{
+    'alert': true,
+    'alert-danger': data.messageType === 'danger',
+    'alert-success': data.messageType === 'success',
+    'alert-warning': data.messageType === 'warning'
+  }" role="alert">
+  {{ data.message }}
+  <button type="button" class="close-btn" (click)="close()">×</button>
+</div>

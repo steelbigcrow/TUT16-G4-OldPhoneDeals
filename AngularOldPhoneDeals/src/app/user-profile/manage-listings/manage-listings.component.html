@@ -1,0 +1,190 @@
+<div class="container-fluid py-4">
+  <!-- Phones List Section -->
+  <section class="mb-5">
+    <h2 class="mb-4 border-bottom pb-2">Your Phones</h2>
+    <div class="mb-3 text-end">
+      <button class="btn btn-success" (click)="showAddPhoneModal = true">Add New Phone</button>
+    </div>
+
+    <div *ngIf="phones.length > 0; else noPhones" class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead class="thead-dark">
+        <tr>
+          <th>Title</th>
+          <th>Brand</th>
+          <th>Image</th>
+          <th>Stock</th>
+          <th>Seller Name</th>
+          <th>Price</th>
+          <th>Disabled</th>
+          <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let phone of phones">
+          <td>{{ phone.title }}</td>
+          <td>{{ phone.brand }}</td>
+          <td>
+            <img [src]="getImageUrl(phone.image)" alt="Phone Image" width="100" class="img-fluid" />
+          </td>
+          <td>{{ phone.stock }}</td>
+          <td>{{ phone.seller?.firstName }} {{ phone.seller?.lastName }}</td>
+          <td>${{ phone.price }}</td>
+          <td>
+            <label class="switch">
+              <input
+                type="checkbox"
+                [checked]="phone.isDisabled"
+                (click)="onToggleClick($event, phone)">
+              <span class="slider round"></span>
+            </label>
+          </td>
+          <td>
+            <button class="btn btn-danger" (click)="confirmDelete(phone)">
+              Delete
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+      <app-pagination
+        [totalPages]="totalPages"
+        [currentPage]="currentPage"
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
+    </div>
+
+    <!-- No phones available -->
+    <ng-template #noPhones>
+      <div class="alert alert-info text-center">
+        No phones available.
+      </div>
+    </ng-template>
+  </section>
+</div>
+
+<!-- Confirmation Dialogs -->
+<!-- 删除确认模态框 -->
+<div class="modal fade show d-block" *ngIf="showDeleteModal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" (click)="showDeleteModal = false"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete <strong>{{ selectedPhoneToDelete?.title }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showDeleteModal = false">Cancel</button>
+        <button class="btn btn-danger" (click)="deletePhone()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 启用/禁用确认模态框 -->
+<div class="modal fade show d-block" *ngIf="showToggleModal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Toggle</h5>
+        <button type="button" class="btn-close" (click)="showToggleModal = false"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to {{ selectedPhoneToToggle?.isDisabled ? 'enable' : 'disable' }} <strong>{{ selectedPhoneToToggle?.title }}</strong>?
+      </div>
+      <div class="modal-footer">
+<!--        <button class="btn btn-secondary" (click)="showToggleModal = false">Cancel</button>-->
+        <button class="btn btn-secondary" (click)="cancelToggle()">Cancel</button>
+        <button class="btn btn-primary" (click)="togglePhone()">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新增手机模态框 -->
+<div class="modal fade show d-block" *ngIf="showAddPhoneModal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Phone</h5>
+        <button type="button" class="btn-close" (click)="showAddPhoneModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" [(ngModel)]="newPhone.title" name="title">
+          </div>
+
+          <!-- 添加品牌下拉选择框 -->
+          <div class="mb-3">
+            <label class="form-label">Brand</label>
+            <div class="input-group">
+              <select class="form-control" [(ngModel)]="newPhone.brand" name="brand">
+                <option *ngFor="let brand of allowedBrands" [value]="brand">{{ brand }}</option>
+              </select>
+              <span class="input-group-text"><i class="bi bi-chevron-down"></i></span> <!-- 添加下拉箭头图标 -->
+            </div>
+          </div>
+
+<!--          <div class="mb-3">-->
+<!--            <label class="form-label">Brand</label>-->
+<!--            <input type="text" class="form-control" [(ngModel)]="newPhone.brand" name="brand">-->
+<!--          </div>-->
+<!--          <div class="mb-3">-->
+<!--            <label class="form-label">Image URL</label>-->
+<!--            <input type="text" class="form-control" [(ngModel)]="newPhone.image" name="image">-->
+<!--          </div>-->
+
+          <!-- 文件上传部分 -->
+          <!-- 设置lang属性为en强制使用英文 -->
+          <div class="mb-3" lang="en">
+            <label class="form-label">Image</label>
+            <input type="file" class="form-control" (change)="onFileSelected($event)" name="image" required>
+          </div>
+
+
+<!--          <body>-->
+<!--          <form class="upload-form" action="/upload-file" method="post" enctype="multipart/form-data">-->
+<!--            <h1>Upload File</h1>-->
+<!--            <label for="file">-->
+<!--              <i class="ph ph-upload"></i>-->
+<!--              <span> Drag & drop or <span style="color: #0c7ce5; display: inline-block; margin: 0px 2px;">browse</span> your files </span>-->
+<!--            </label>-->
+<!--            <input id="file" type="file" name="file">-->
+<!--            <div class="result" style="display: none;">-->
+<!--              <i class="ph ph-file"></i>-->
+<!--              <div class="file-details">-->
+<!--                <span class="file-name"></span>-->
+<!--                <span class="file-size"></span>-->
+<!--              </div>-->
+<!--              <div class="upload-result"></div>-->
+<!--            </div>-->
+<!--          </form>-->
+<!--          <script src="https://unpkg.com/@phosphor-icons/web"></script>-->
+<!--          <script type="text/javascript">-->
+<!--            /* Add JavaScript here */-->
+<!--          </script>-->
+<!--          </body>-->
+          <div class="mb-3">
+            <label class="form-label">Stock</label>
+            <input type="number" class="form-control" [(ngModel)]="newPhone.stock" name="stock" min="0" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Price</label>
+            <input type="number" class="form-control" [(ngModel)]="newPhone.price" name="price" min="0" required>
+          </div>
+
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showAddPhoneModal = false">Cancel</button>
+        <button class="btn btn-primary" (click)="createPhone()">Create</button>
+      </div>
+    </div>
+  </div>
+</div>

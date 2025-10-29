@@ -1,0 +1,91 @@
+<section id="viewSellerReviewPage">
+  <div class="container p-3 p-md-5">
+    <div class="row mt-4 mt-md-5">
+      <div class="col-lg-10 offset-lg-2">
+        <!-- 返回按钮 -->
+        <button class="btn btn-link mb-3 mb-md-4" (click)="goBack()">← Back</button>
+
+        <div class="card bg-light">
+          <div class="card-body">
+            <h4 class="text-center">Seller Reviews</h4>
+            <hr>
+
+            <!-- 加载状态提示 -->
+            <div *ngIf="isLoading" class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2">Loading reviews...</p>
+            </div>
+
+            <!-- 评价列表 -->
+            <div *ngIf="!isLoading">
+              <div *ngFor="let review of reviews" class="card mb-3" [ngClass]="{'bg-light': review.isHidden}">
+                <div class="card-body">
+                  <div class="d-flex flex-column flex-md-row justify-content-between">
+                    <!-- 左边：用户名 + 手机信息 + 星星评分 -->
+                    <div class="flex-grow-1">
+                      <h5 class="card-title">{{ review.reviewer }}</h5>
+                      <p class="text-muted mb-1" *ngIf="review.phoneTitle">For phone: {{ review.phoneTitle }}</p>
+                      <div class="rating mb-2">
+                        <span *ngFor="let star of [1, 2, 3, 4, 5]">
+                          <i class="bi" [ngClass]="{
+                            'bi-star-fill text-warning': star <= review.rating,
+                            'bi-star': star > review.rating
+                          }"></i>
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- 右边：时间 + 按钮 -->
+                    <div class="mt-3 mt-md-0 text-md-end">
+                      <small class="text-muted d-block">{{ review.createdAt | date:'dd/MM/yyyy' }}</small>
+                      <button
+                        class="btn btn-sm mt-2 "
+                        [ngClass]="{
+                          'btn-outline-danger': !review.isHidden,
+                          'btn-outline-success': review.isHidden
+                        }"
+                        (click)="toggleVisibility(review)">
+                        <i class="bi" [ngClass]="{
+                          'bi-eye-slash': !review.isHidden,
+                          'bi-eye': review.isHidden
+                        }"></i>
+                        {{ review.isHidden ? 'Show Review' : 'Hide Review' }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 内容 -->
+                  <!-- 内容 -->
+                  <p class="card-text mt-2"
+                     [ngClass]="{
+                      'text-muted': review.isHidden,
+                    }">
+                    {{ review.comment }}
+                  </p>
+
+                  <!-- 隐藏提示 -->
+                  <small class="text-muted d-block mt-2" *ngIf="review.isHidden">
+                    <i class="bi bi-eye-slash me-1"></i>This review is hidden
+                  </small>
+                </div>
+              </div>
+              <app-pagination
+                [totalPages]="totalPages"
+                [currentPage]="currentPage"
+                (pageChange)="onPageChange($event)">
+              </app-pagination>
+
+              <!-- 无评价提示 -->
+              <div *ngIf="reviews.length === 0" class="text-center text-muted">
+                No reviews available
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

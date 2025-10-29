@@ -1,0 +1,73 @@
+<div class="sales-logs">
+  <div class="header">
+    <h1>Sales Logs</h1>
+    <div class="filters">
+      <form [formGroup]="searchForm" class="search-form">
+        <input
+          type="text"
+          formControlName="searchTerm"
+          placeholder="Search by buyer or item..."
+        >
+      </form>
+      <form [formGroup]="filterForm" class="filter-controls">
+        <select formControlName="sortOption">
+          <option *ngFor="let opt of sortOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+        <select formControlName="brandFilter">
+          <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <h3>Total Sales</h3>
+      <p class="amount">${{ globalTotalSales.toFixed(2) }}</p>
+    </div>
+    <div class="summary-card">
+      <h3>Total Transactions</h3>
+      <p class="count">{{ globalTotalTransactions }}</p>
+    </div>
+    <div class="export-buttons">
+      <button class="export-btn csv" (click)="exportToCSV()">
+        Export to CSV
+      </button>
+      <button class="export-btn json" (click)="exportToJSON()">
+        Export to JSON
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+    <table class="transactions-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Buyer</th>
+          <th>Items</th>
+          <th>Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let transaction of filteredTransactions">
+          <td>{{ transaction.timestamp | date:'medium' }}</td>
+          <td>{{ transaction.buyer }}</td>
+          <td class="items-cell">
+            <ul>
+              <li *ngFor="let item of transaction.items">
+                <strong>{{ item.name }}</strong> ({{ item.quantity }})
+              </li>
+            </ul>
+          </td>
+          <td>${{ transaction.totalAmount.toFixed(2) }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <app-pagination
+      [totalPages]="totalPages"
+      [currentPage]="currentPage"
+      (pageChange)="onPageChange($event)">
+    </app-pagination>
+  </div>
+</div> 

@@ -1,0 +1,8 @@
+<ng-container *ngIf="isAdmin">
+  <app-admin-header></app-admin-header>
+</ng-container>
+<ng-container *ngIf="!isAdmin">
+  <app-user-header></app-user-header>
+</ng-container>
+<app-message></app-message>
+<router-outlet></router-outlet>  <!-- router view outlet -->

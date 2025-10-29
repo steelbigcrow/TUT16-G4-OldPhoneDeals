@@ -1,0 +1,24 @@
+<div class="card h-100 shadow-sm">
+  <div class="card-img-top text-center pt-3">
+    <img
+      [src]="getImageUrl(phone.image)"
+      [alt]="phone.title"
+      class="img-fluid"
+      style="height: 150px; object-fit: contain;"
+    />
+  </div>
+  <div class="card-body d-flex flex-column">
+    <h5 class="card-title text-center" style="font-size: 1rem; min-height: 3rem;">{{ phone.title }}</h5>
+    <div class="mb-2">
+      <span *ngFor="let star of [1, 2, 3, 4, 5]">
+        <i class="bi" [ngClass]="{'bi-star-fill text-warning': star <= (phone.averageRating || 0), 'bi-star': star > (phone.averageRating || 0)}"></i>
+      </span>
+      <small class="ms-1 text-muted">({{ phone.reviews.length || 0 }} reviews)</small>
+    </div>
+    <p *ngIf="phone.stock > 0 && phone.stock < 4" class="card-text text-danger mb-0">Only {{ phone.stock }} left!</p>
+    <p *ngIf="phone.stock === 0" class="card-text text-danger mb-0">Out of Stock</p>
+    <p class="card-text text-primary mb-1">${{ phone.price.toFixed(2) }}</p>
+    <p class="card-text text-muted small mb-2">Seller: {{ phone.seller?.firstName }} {{ phone.seller?.lastName }}</p>
+    <button (click)="onView()" class="btn btn-outline-primary mt-auto">View Details</button>
+  </div>
+</div>

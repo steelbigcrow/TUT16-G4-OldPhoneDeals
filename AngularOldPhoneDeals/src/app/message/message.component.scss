@@ -1,0 +1,34 @@
+.alert {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+  position: relative;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+
+}
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+  transition: opacity 0.3s ease;
+}
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  transition: opacity 0.3s ease;
+}
+.alert-warning {
+  background: #fff3cd;
+  color: #856404;
+  transition: opacity 0.3s ease;
+}
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: inherit;
+}

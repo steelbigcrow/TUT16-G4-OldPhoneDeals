@@ -1,0 +1,46 @@
+<section id="editProfilePage">
+  <div class="container p-5">
+    <div class="row mt-5">
+      <div class="col-lg-8 offset-lg-2">
+        <button class="btn btn-link mb-4" (click)="goBack()">← Back</button>
+
+        <div class="card bg-light">
+          <div class="card-body">
+            <h4 class="text-center">Edit Profile</h4>
+            <hr>
+
+            <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+              <!-- First Name -->
+              <div class="mb-3">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" formControlName="firstName">
+              </div>
+
+              <!-- Last Name -->
+              <div class="mb-3">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" formControlName="lastName">
+              </div>
+
+              <!-- Email -->
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" formControlName="email">
+              </div>
+
+              <!-- Current Password -->
+              <div class="mb-4">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" formControlName="password" required>
+              </div>
+
+              <button type="submit" class="btn btn-success" [disabled]="!profileForm.valid">
+                <i class="fas fa-save"></i> Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

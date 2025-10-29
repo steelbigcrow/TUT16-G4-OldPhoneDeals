@@ -1,0 +1,95 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm sticky-top">
+  <div class="container-fluid">
+    <!-- Brand Name -->
+    <a class="navbar-brand fw-bold text-primary" routerLink="/">{{ siteName }}</a>
+
+    <!-- Collapse button, adapted for mobile devices -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navigation bar content -->
+    <div class="collapse navbar-collapse" id="navbarContent">
+      <!-- Search form -->
+      <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0" (ngSubmit)="performSearch()">
+        <div class="input-group">
+          <!-- Search input box -->
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="searchQuery"
+                 name="searchQuery"
+                 placeholder="Search phones...">
+
+          <!-- Brand selection dropdown menu -->
+          <select class="form-select flex-shrink-1" style="max-width: 140px;"
+                  [(ngModel)]="selectedBrand"
+                  name="selectedBrand">
+            <option value="">All Brands</option>
+            <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>
+          </select>
+
+          <!-- Search button -->
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-search"></i> Search
+          </button>
+        </div>
+      </form>
+
+      <!-- Price slider, placed on the next line -->
+      <div class="d-flex align-items-center mb-2 mb-lg-0">
+        <label class="me-2 text-secondary small d-none d-sm-block">Max Price: ¥{{ maxPrice }}</label>
+        <input type="range"
+               class="form-range mx-2"
+               style="width: 150px;"
+               [(ngModel)]="maxPrice"
+               name="maxPrice"
+               min="0"
+               max="1000"
+               step="10">
+      </div>
+
+      <!-- User operations -->
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <!-- Checkout button -->
+        <li class="nav-item me-3">
+          <button class="btn btn-outline-primary position-relative" (click)="navigateToCheckout()">
+            <i class="bi bi-cart"></i> Checkout
+            <span *ngIf="cartItemCount > 0"
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {{ cartItemCount }}
+            </span>
+          </button>
+        </li>
+
+        <!-- Wishlist button (always displayed) -->
+        <li class="nav-item me-2">
+          <button class="btn btn-outline-secondary" (click)="navigateToWishlist()">
+            <i class="bi bi-heart"></i> Wishlist
+          </button>
+        </li>
+
+        <!-- Login button (displayed when not logged in) -->
+        <li class="nav-item" *ngIf="!isLoggedIn">
+          <button class="btn btn-outline-secondary" (click)="login()">
+            <i class="bi bi-person"></i> Login
+          </button>
+        </li>
+
+        <!-- User dropdown (displayed when logged in) -->
+        <li class="nav-item dropdown" *ngIf="isLoggedIn">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i>
+            <ng-container *ngIf="currentUser$ | async as user">
+              {{ user?.firstName }} {{ user?.lastName }}
+            </ng-container>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" routerLink="/user-profile">Profile</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" (click)="logout(); $event.preventDefault()">Logout</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
