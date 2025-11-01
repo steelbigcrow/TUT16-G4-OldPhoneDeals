@@ -84,3 +84,6 @@ Desktop.ini
 /public/uploads/
 AngularOldPhoneDeals/pnpm-lock.yaml
 server/pnpm-lock.yaml
+
+# Agent相关
+.claude
