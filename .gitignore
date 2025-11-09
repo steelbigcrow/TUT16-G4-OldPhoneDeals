@@ -87,3 +87,4 @@ server/pnpm-lock.yaml
 
 # Agent相关
 .claude
+AGENTS.md
