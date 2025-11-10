@@ -39,6 +39,10 @@ out/
 /data/db/
 *.mongodump
 
+# MySQL 备份
+*.sql
+*_backup.sql
+
 # 前端开发缓存
 .history/
 .sass-cache/
