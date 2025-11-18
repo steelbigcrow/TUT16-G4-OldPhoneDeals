@@ -1,0 +1,43 @@
+spring:
+  data:
+    mongodb:
+      # 生产环境必须通过环境变量配置
+      uri: ${MONGODB_URI}
+  
+  mail:
+    host: smtp.sendgrid.net
+    port: 587
+    username: apikey
+    password: ${SENDGRID_API_KEY}
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-exception: false
+    include-message: always
+
+# 生产环境必须设置强密钥
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 604800000
+
+# 日志（生产环境）
+logging:
+  level:
+    root: WARN
+    com.oldphonedeals: INFO
+    org.springframework.security: WARN
+  file:
+    name: /var/log/oldphonedeals/application.log
+    max-size: 100MB
+    max-history: 30
+
+# 生产环境前端 URL
+frontend:
+  url: ${FRONTEND_URL:https://oldphonedeals.com}
+
+# 生产环境文件上传
+file:
+  upload:
+    dir: ${UPLOAD_DIR:/var/www/oldphonedeals/uploads/images}

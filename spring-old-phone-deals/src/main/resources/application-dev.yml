@@ -1,0 +1,42 @@
+spring:
+  # 开发环境 MongoDB（可以使用内嵌或本地）
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/oldphonedeals-dev}
+  
+  # 开发环境禁用邮件（或使用假邮件服务）
+  mail:
+    host: ${MAIL_HOST:smtp.mailtrap.io}
+    port: ${MAIL_PORT:2525}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+
+# 开发环境服务器配置
+server:
+  port: 3000
+  error:
+    include-stacktrace: on-param  # 开发环境可以查看堆栈
+
+# JWT 开发密钥（不要在生产使用）
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-please-change-in-production-at-least-256-bits-long}
+
+# 开发环境日志（更详细）
+logging:
+  level:
+    root: INFO
+    com.oldphonedeals: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+  file:
+    name: logs/dev-application.log
+
+# 前端开发服务器
+frontend:
+  url: http://localhost:4200
+
+# 文件上传（开发环境）
+file:
+  upload:
+    dir: ./dev-uploads/images

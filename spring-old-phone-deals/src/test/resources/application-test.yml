@@ -1,0 +1,48 @@
+spring:
+  # 测试环境使用嵌入式 MongoDB（需要添加 de.flapdoodle.embed.mongo 依赖）
+  # 或者使用 Testcontainers
+  data:
+    mongodb:
+      # 使用内存数据库进行测试
+      uri: mongodb://localhost:27017/oldphonedeals-test
+  
+  # 测试环境邮件配置（使用假邮件服务）
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+# 测试环境服务器配置
+server:
+  port: 0  # 随机端口
+  error:
+    include-stacktrace: always
+
+# JWT 测试密钥（长度足够，用于 HS512）
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LXBsZWFzZS1jaGFuZ2UtaW4tcHJvZHVjdGlvbi1hdC1sZWFzdC0yNTYtYml0cy1sb25nLWZvci10ZXN0aW5nLXB1cnBvc2VzLW9ubHk=
+  expiration: 3600000  # 1小时
+
+# 测试环境日志（减少输出）
+logging:
+  level:
+    root: WARN
+    com.oldphonedeals: DEBUG
+    org.springframework.test: INFO
+    org.springframework.boot.test: INFO
+
+# 前端测试 URL
+frontend:
+  url: http://localhost:4200
+
+# 文件上传（测试环境）
+file:
+  upload:
+    dir: ./test-uploads/images
