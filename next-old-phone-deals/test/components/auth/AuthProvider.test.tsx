@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import { AuthProvider, useAuth } from './AuthProvider';
+import { AuthProvider, useAuth } from '@/components/auth/AuthProvider';
 import type { User, Admin } from '@/types/auth';
 
 const pushMock = jest.fn();

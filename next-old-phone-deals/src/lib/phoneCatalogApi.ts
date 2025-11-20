@@ -4,6 +4,7 @@ import type {
   CatalogSearchResponse,
   SpecialPhoneCategory
 } from '@/types/phone';
+import type { ApiResponse } from '@/types/auth';
 
 type RawReview = {
   rating?: number;
@@ -151,38 +152,41 @@ function buildSearchQuery(params: SearchPhonesParams): URLSearchParams {
 export async function fetchSpecialPhones(
   special: SpecialPhoneCategory
 ): Promise<CatalogPhone[]> {
-  const response = await apiGet<unknown>(`/phones?special=${special}`);
+  const response = await apiGet<ApiResponse<RawPhone[]>>(
+    `/phones?special=${special}`
+  );
 
-  if (!Array.isArray(response)) {
+  if (!response?.success || !Array.isArray(response.data)) {
     const message =
-      typeof response === 'object' && response && 'message' in response
-        ? String((response as { message?: unknown }).message)
-        : `Unexpected response when fetching ${special} phones`;
+      response?.message ||
+      `Unexpected response when fetching ${special} phones`;
     throw new Error(message || 'Failed to load featured phones');
   }
 
-  return (response as RawPhone[]).map(normalizePhone);
+  return response.data.map(normalizePhone);
 }
 
 export async function searchPhones(
   params: SearchPhonesParams = {}
 ): Promise<CatalogSearchResponse> {
   const query = buildSearchQuery(params);
-  const response = await apiGet<RawSearchResponse>(`/phones?${query.toString()}`);
+  const response = await apiGet<ApiResponse<RawSearchResponse>>(
+    `/phones?${query.toString()}`
+  );
 
-  if (!response || !Array.isArray(response.phones)) {
-    throw new Error(
-      response?.message || 'Invalid response when searching for phones'
-    );
+  if (!response?.success || !response.data || !Array.isArray(response.data.phones)) {
+    const message =
+      response?.message || 'Invalid response when searching for phones';
+    throw new Error(message);
   }
 
   return {
-    phones: response.phones.map(normalizePhone),
-    totalPages: response.totalPages ?? 1,
+    phones: response.data.phones.map(normalizePhone),
+    totalPages: response.data.totalPages ?? 1,
     currentPage:
-      response.currentPage ??
+      response.data.currentPage ??
       (params.page && params.page > 0 ? params.page : 1),
-    total: response.total ?? response.phones.length
+    total: response.data.total ?? response.data.phones.length
   };
 }
 

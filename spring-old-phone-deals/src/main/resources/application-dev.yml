@@ -34,7 +34,7 @@ logging:
 
 # 前端开发服务器
 frontend:
-  url: http://localhost:4200
+  url: http://localhost:3000
 
 # 文件上传（开发环境）
 file:

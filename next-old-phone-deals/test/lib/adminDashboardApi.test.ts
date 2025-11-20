@@ -1,6 +1,6 @@
-import { getDashboardStats } from './adminDashboardApi';
+import { getDashboardStats } from '@/lib/adminDashboardApi';
 
-jest.mock('./apiClient', () => ({
+jest.mock('@/lib/apiClient', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiPut: jest.fn(),
@@ -9,7 +9,7 @@ jest.mock('./apiClient', () => ({
 }));
 
 describe('adminDashboardApi', () => {
-  const api = jest.requireMock('./apiClient') as {
+  const api = jest.requireMock('@/lib/apiClient') as {
     apiGet: jest.Mock;
     apiPost: jest.Mock;
     apiPut: jest.Mock;
@@ -30,7 +30,7 @@ describe('adminDashboardApi', () => {
 
     expect(result).toEqual(data);
     expect(api.apiGet).toHaveBeenCalledTimes(1);
-    expect(api.apiGet).toHaveBeenCalledWith('/admin/dashboard-stats', { authToken: token });
+    expect(api.apiGet).toHaveBeenCalledWith('/admin/stats', { authToken: token });
   });
 
   it('getDashboardStats throws when success=false', async () => {
@@ -38,6 +38,6 @@ describe('adminDashboardApi', () => {
     api.apiGet.mockResolvedValue({ success: false, message: 'Failed' });
 
     await expect(getDashboardStats(token)).rejects.toThrow('Failed');
-    expect(api.apiGet).toHaveBeenCalledWith('/admin/dashboard-stats', { authToken: token });
+    expect(api.apiGet).toHaveBeenCalledWith('/admin/stats', { authToken: token });
   });
 });

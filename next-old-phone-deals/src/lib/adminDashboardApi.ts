@@ -7,13 +7,13 @@ import type { ApiResponse, DashboardStatsResponse } from '@/types/admin';
 
 /**
  * 获取仪表盘统计数据
- * GET /api/admin/dashboard-stats
+ * GET /api/admin/stats
  */
 export async function getDashboardStats(
   token: string
 ): Promise<DashboardStatsResponse> {
   const response = await apiGet<ApiResponse<DashboardStatsResponse>>(
-    '/admin/dashboard-stats',
+    '/admin/stats',
     {
       authToken: token
     }

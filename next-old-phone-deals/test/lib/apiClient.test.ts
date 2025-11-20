@@ -1,4 +1,4 @@
-import { apiGet, apiPost, ApiError } from './apiClient';
+import { apiGet, apiPost, ApiError } from '@/lib/apiClient';
 
 describe('apiClient', () => {
   const globalAny = global as unknown as { fetch: jest.Mock };
@@ -20,7 +20,7 @@ describe('apiClient', () => {
 
     expect(result).toEqual(mockBody);
     expect(globalAny.fetch).toHaveBeenCalledWith(
-      'http://localhost:8080/api/test',
+      'http://localhost:3000/api/test',
       expect.objectContaining({ method: 'GET' }),
     );
   });
@@ -91,7 +91,7 @@ describe('apiClient', () => {
 
     expect(result).toEqual(body);
     expect(globalAny.fetch).toHaveBeenCalledWith(
-      'http://localhost:8080/api/post',
+      'http://localhost:3000/api/post',
       expect.objectContaining({ method: 'POST' }),
     );
   });

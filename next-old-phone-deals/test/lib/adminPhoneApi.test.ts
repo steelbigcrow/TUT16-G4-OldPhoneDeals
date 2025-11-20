@@ -1,6 +1,6 @@
-import { getAdminPhones, updateAdminPhone, toggleAdminPhoneDisabled, deleteAdminPhone } from './adminPhoneApi';
+import { getAdminPhones, updateAdminPhone, toggleAdminPhoneDisabled, deleteAdminPhone } from '@/lib/adminPhoneApi';
 
-jest.mock('./apiClient', () => ({
+jest.mock('@/lib/apiClient', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiPut: jest.fn(),
@@ -9,7 +9,7 @@ jest.mock('./apiClient', () => ({
 }));
 
 describe('adminPhoneApi', () => {
-  const api = jest.requireMock('./apiClient') as {
+  const api = jest.requireMock('@/lib/apiClient') as {
     apiGet: jest.Mock;
     apiPost: jest.Mock;
     apiPut: jest.Mock;
@@ -24,7 +24,15 @@ describe('adminPhoneApi', () => {
   describe('getAdminPhones', () => {
     it('使用默认分页并返回数据', async () => {
       const token = 'tk';
-      const pageData = { content: [{ id: 'p1' }], currentPage: 0, totalPages: 1, total: 1, pageSize: 10 };
+      const pageData = {
+        content: [{ id: 'p1' }],
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 1,
+        itemsPerPage: 10,
+        hasNext: false,
+        hasPrevious: false
+      };
       api.apiGet.mockResolvedValue({ success: true, data: pageData });
 
       const result = await getAdminPhones(token);

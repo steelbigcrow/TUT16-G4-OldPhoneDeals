@@ -7,7 +7,7 @@ import {
   clearAdminToken,
   clearAllTokens,
   getActiveToken,
-} from './authStorage';
+} from '@/lib/authStorage';
 
 describe('authStorage', () => {
   beforeEach(() => {

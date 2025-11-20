@@ -5,8 +5,8 @@
 // Spring Boot API 响应包装
 export type ApiResponse<T> = {
   success: boolean;
-  message: string;
-  data: T;
+  message?: string;
+  data?: T;
 };
 
 // 用户信息

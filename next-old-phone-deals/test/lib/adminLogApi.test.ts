@@ -1,6 +1,6 @@
-import { getAdminLogs } from './adminLogApi';
+import { getAdminLogs } from '@/lib/adminLogApi';
 
-jest.mock('./apiClient', () => ({
+jest.mock('@/lib/apiClient', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiPut: jest.fn(),
@@ -9,7 +9,7 @@ jest.mock('./apiClient', () => ({
 }));
 
 describe('adminLogApi', () => {
-  const api = jest.requireMock('./apiClient') as {
+  const api = jest.requireMock('@/lib/apiClient') as {
     apiGet: jest.Mock;
     apiPost: jest.Mock;
     apiPut: jest.Mock;
@@ -23,7 +23,15 @@ describe('adminLogApi', () => {
 
   it('getAdminLogs 使用默认分页参数并返回数据', async () => {
     const token = 't-1';
-    const pageData = { content: [{ id: 'log1' }], page: 0, pageSize: 10, total: 1 };
+    const pageData = {
+      content: [{ id: 'log1' }],
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 1,
+      itemsPerPage: 10,
+      hasNext: false,
+      hasPrevious: false
+    };
     api.apiGet.mockResolvedValue({ success: true, data: pageData });
 
     const result = await getAdminLogs(token);

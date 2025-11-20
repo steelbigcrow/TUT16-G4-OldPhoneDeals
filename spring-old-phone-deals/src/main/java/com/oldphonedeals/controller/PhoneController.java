@@ -3,6 +3,7 @@ package com.oldphonedeals.controller;
 import com.oldphonedeals.dto.request.phone.PhoneCreateRequest;
 import com.oldphonedeals.dto.request.phone.PhoneUpdateRequest;
 import com.oldphonedeals.dto.request.phone.ReviewCreateRequest;
+import com.oldphonedeals.dto.request.phone.TogglePhoneStatusRequest;
 import com.oldphonedeals.dto.response.ApiResponse;
 import com.oldphonedeals.dto.response.phone.PhoneListItemResponse;
 import com.oldphonedeals.dto.response.phone.PhoneResponse;
@@ -126,6 +127,34 @@ public class PhoneController {
     return ResponseEntity.ok(
         ApiResponse.success("Phone deleted successfully")
     );
+  }
+
+  /**
+   * ??/????
+   * PUT /api/phones/{phoneId}/disable
+   *
+   * ??:server/app/controllers/phone.controller.js:546-584
+   *
+   * @param phoneId ??ID
+   * @param request ??????
+   * @return ??????
+   */
+  @PutMapping("/{phoneId}/disable")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<ApiResponse<String>> togglePhoneDisabled(
+      @PathVariable String phoneId,
+      @Valid @RequestBody TogglePhoneStatusRequest request
+  ) {
+    log.info("PUT /api/phones/{}/disable - Toggling phone status", phoneId);
+
+    String userId = getCurrentUserId();
+    ApiResponse<String> response = phoneService.togglePhoneDisabled(
+        phoneId,
+        request.getIsDisabled(),
+        userId
+    );
+
+    return ResponseEntity.ok(response);
   }
 
   /**

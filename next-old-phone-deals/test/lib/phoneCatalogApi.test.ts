@@ -1,8 +1,8 @@
-import { fetchSpecialPhones, searchPhones, __internal } from './phoneCatalogApi';
-import * as api from './apiClient';
+import { fetchSpecialPhones, searchPhones, __internal } from '@/lib/phoneCatalogApi';
+import * as api from '@/lib/apiClient';
 import type { CatalogPhone } from '@/types/phone';
 
-jest.mock('./apiClient', () => ({
+jest.mock('@/lib/apiClient', () => ({
   apiGet: jest.fn()
 }));
 
@@ -39,16 +39,19 @@ describe('phoneCatalogApi', () => {
   });
 
   it('fetchSpecialPhones returns normalized data', async () => {
-    apiGetMock.mockResolvedValue([
-      {
-        _id: 'p1',
-        title: 'Seller Special',
-        brand: 'Samsung',
-        price: 299,
-        stock: 5,
-        imageUrl: 'http://cdn.example.com/p1.png'
-      }
-    ]);
+    apiGetMock.mockResolvedValue({
+      success: true,
+      data: [
+        {
+          _id: 'p1',
+          title: 'Seller Special',
+          brand: 'Samsung',
+          price: 299,
+          stock: 5,
+          imageUrl: 'http://cdn.example.com/p1.png'
+        }
+      ]
+    });
 
     const result = await fetchSpecialPhones('soldOutSoon');
 
@@ -62,7 +65,7 @@ describe('phoneCatalogApi', () => {
   });
 
   it('fetchSpecialPhones throws when backend response is invalid', async () => {
-    apiGetMock.mockResolvedValue({ message: 'Bad request' });
+    apiGetMock.mockResolvedValue({ success: false, message: 'Bad request' });
 
     await expect(fetchSpecialPhones('bestSellers')).rejects.toThrow(
       'Bad request'
@@ -71,18 +74,21 @@ describe('phoneCatalogApi', () => {
 
   it('searchPhones returns paginated catalog data', async () => {
     apiGetMock.mockResolvedValue({
-      phones: [
-        {
-          id: 'x1',
-          title: 'Rare Nokia',
-          brand: 'Nokia',
-          price: 120,
-          stock: 8
-        }
-      ],
-      currentPage: 2,
-      totalPages: 5,
-      total: 40
+      success: true,
+      data: {
+        phones: [
+          {
+            id: 'x1',
+            title: 'Rare Nokia',
+            brand: 'Nokia',
+            price: 120,
+            stock: 8
+          }
+        ],
+        currentPage: 2,
+        totalPages: 5,
+        total: 40
+      }
     });
 
     const result = await searchPhones({
@@ -106,7 +112,7 @@ describe('phoneCatalogApi', () => {
   });
 
   it('searchPhones throws an error when backend payload is missing phones array', async () => {
-    apiGetMock.mockResolvedValue({ message: 'No phones found' });
+    apiGetMock.mockResolvedValue({ success: false, message: 'No phones found' });
 
     await expect(searchPhones()).rejects.toThrow('No phones found');
   });

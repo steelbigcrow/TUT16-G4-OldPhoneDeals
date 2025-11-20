@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: old-phone-deals
   
@@ -50,7 +52,7 @@ jwt:
 
 # 前端 URL
 frontend:
-  url: ${FRONTEND_URL:http://localhost:4200}
+  url: ${FRONTEND_URL:http://localhost:3000}
 
 # 文件上传路径
 file:
@@ -80,3 +82,7 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+app:
+  e2e:
+    enabled: ${APP_E2E_ENABLED:false}

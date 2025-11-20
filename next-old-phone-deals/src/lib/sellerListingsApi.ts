@@ -22,6 +22,11 @@ export async function getSellerListings(
     `/phones/by-seller/${sellerId}`,
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to load seller listings');
+  }
+
   return response.data;
 }
 
@@ -38,6 +43,11 @@ export async function createPhone(
     data,
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to create phone');
+  }
+
   return response.data;
 }
 
@@ -55,6 +65,11 @@ export async function updatePhone(
     data,
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update phone');
+  }
+
   return response.data;
 }
 
@@ -66,10 +81,14 @@ export async function deletePhone(
   phoneId: string,
   token: string
 ): Promise<void> {
-  await apiDelete<ApiResponse<string>>(
+  const response = await apiDelete<ApiResponse<string>>(
     `/phones/${phoneId}`,
     { authToken: token }
   );
+
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete phone');
+  }
 }
 
 /**
@@ -85,9 +104,13 @@ export async function togglePhoneDisabled(
   isDisabled: boolean,
   token: string
 ): Promise<void> {
-  await apiPut<ApiResponse<string>, { isDisabled: boolean }>(
+  const response = await apiPut<ApiResponse<string>, { isDisabled: boolean }>(
     `/phones/${phoneId}/disable`,
     { isDisabled },
     { authToken: token }
   );
+
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to update phone status');
+  }
 }

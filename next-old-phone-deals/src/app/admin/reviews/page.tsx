@@ -17,8 +17,8 @@ export default function AdminReviewsPage(): JSX.Element {
   const [reviews, setReviews] = useState<ReviewManagementResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const pageSize = 10;
 
@@ -30,7 +30,7 @@ export default function AdminReviewsPage(): JSX.Element {
   }, [admin, authLoading, router]);
 
   // 加载评论列表
-  const loadReviews = async (page: number = 0) => {
+  const loadReviews = async (page: number = 1) => {
     const token = getAdminToken();
     if (!token || !admin) return;
 
@@ -41,7 +41,7 @@ export default function AdminReviewsPage(): JSX.Element {
       setReviews(response.content);
       setCurrentPage(response.currentPage);
       setTotalPages(response.totalPages);
-      setTotal(response.total);
+      setTotal(response.totalItems);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载评论列表失败';
       setError(message);
@@ -52,7 +52,7 @@ export default function AdminReviewsPage(): JSX.Element {
 
   useEffect(() => {
     if (admin) {
-      loadReviews(0);
+      loadReviews(1);
     }
   }, [admin]);
 
@@ -94,13 +94,13 @@ export default function AdminReviewsPage(): JSX.Element {
 
   // 分页控制
   const handlePrevPage = () => {
-    if (currentPage > 0) {
+    if (currentPage > 1) {
       loadReviews(currentPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
+    if (currentPage < totalPages) {
       loadReviews(currentPage + 1);
     }
   };
@@ -231,19 +231,19 @@ export default function AdminReviewsPage(): JSX.Element {
       {totalPages > 1 && (
         <div className="flex justify-between items-center bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="text-sm text-slate-400">
-            第 {currentPage + 1} 页，共 {totalPages} 页
+            第 {currentPage} 页，共 {totalPages} 页
           </div>
           <div className="flex gap-2">
             <button
               onClick={handlePrevPage}
-              disabled={currentPage === 0}
+              disabled={currentPage === 1}
               className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               上一页
             </button>
             <button
               onClick={handleNextPage}
-              disabled={currentPage >= totalPages - 1}
+              disabled={currentPage >= totalPages}
               className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               下一页

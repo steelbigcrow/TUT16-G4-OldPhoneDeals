@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import LoginPage from './page';
+import LoginPage from '@/app/login/page';
 import type { ApiResponse, LoginResponse } from '@/types/auth';
 
 const pushMock = jest.fn();

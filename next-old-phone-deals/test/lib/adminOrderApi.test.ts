@@ -1,6 +1,6 @@
-import { getAdminOrders, getOrderDetail } from './adminOrderApi';
+import { getAdminOrders, getOrderDetail } from '@/lib/adminOrderApi';
 
-jest.mock('./apiClient', () => ({
+jest.mock('@/lib/apiClient', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiPut: jest.fn(),
@@ -9,7 +9,7 @@ jest.mock('./apiClient', () => ({
 }));
 
 describe('adminOrderApi', () => {
-  const api = jest.requireMock('./apiClient') as {
+  const api = jest.requireMock('@/lib/apiClient') as {
     apiGet: jest.Mock;
     apiPost: jest.Mock;
     apiPut: jest.Mock;
@@ -24,7 +24,15 @@ describe('adminOrderApi', () => {
   describe('getAdminOrders', () => {
     it('calls apiGet with default pagination and returns data', async () => {
       const token = 't-1';
-      const pageData = { content: [{ id: 'o1' }], page: 0, pageSize: 10, total: 1 };
+      const pageData = {
+        content: [{ id: 'o1' }],
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 1,
+        itemsPerPage: 10,
+        hasNext: false,
+        hasPrevious: false
+      };
       api.apiGet.mockResolvedValue({ success: true, data: pageData });
 
       const result = await getAdminOrders(token);

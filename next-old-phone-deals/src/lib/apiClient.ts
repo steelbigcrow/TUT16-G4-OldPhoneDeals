@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8080/api';
+const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
 
 function getBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE_URL) {

@@ -19,5 +19,10 @@ export async function getReviewsBySeller(
     '/phones/reviews/by-seller',
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to load reviews');
+  }
+
   return response.data;
 }

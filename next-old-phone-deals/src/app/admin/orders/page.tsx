@@ -19,8 +19,8 @@ export default function AdminOrdersPage(): JSX.Element {
   const [orders, setOrders] = useState<OrderManagementResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetailResponse | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -34,7 +34,7 @@ export default function AdminOrdersPage(): JSX.Element {
   }, [admin, authLoading, router]);
 
   // 加载订单列表
-  const loadOrders = async (page: number = 0) => {
+  const loadOrders = async (page: number = 1) => {
     const token = getAdminToken();
     if (!token || !admin) return;
 
@@ -45,7 +45,7 @@ export default function AdminOrdersPage(): JSX.Element {
       setOrders(response.content);
       setCurrentPage(response.currentPage);
       setTotalPages(response.totalPages);
-      setTotal(response.total);
+      setTotal(response.totalItems);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载订单列表失败';
       setError(message);
@@ -56,7 +56,7 @@ export default function AdminOrdersPage(): JSX.Element {
 
   useEffect(() => {
     if (admin) {
-      loadOrders(0);
+      loadOrders(1);
     }
   }, [admin]);
 
@@ -77,13 +77,13 @@ export default function AdminOrdersPage(): JSX.Element {
 
   // 分页控制
   const handlePrevPage = () => {
-    if (currentPage > 0) {
+    if (currentPage > 1) {
       loadOrders(currentPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
+    if (currentPage < totalPages) {
       loadOrders(currentPage + 1);
     }
   };
@@ -184,19 +184,19 @@ export default function AdminOrdersPage(): JSX.Element {
           {totalPages > 1 && (
             <div className="px-4 py-3 bg-slate-900 border-t border-slate-700 flex justify-between items-center">
               <div className="text-sm text-slate-400">
-                第 {currentPage + 1} 页，共 {totalPages} 页
+                第 {currentPage} 页，共 {totalPages} 页
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={handlePrevPage}
-                  disabled={currentPage === 0}
+                  disabled={currentPage === 1}
                   className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   上一页
                 </button>
                 <button
                   onClick={handleNextPage}
-                  disabled={currentPage >= totalPages - 1}
+                  disabled={currentPage >= totalPages}
                   className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   下一页

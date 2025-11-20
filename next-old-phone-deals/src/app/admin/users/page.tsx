@@ -21,8 +21,8 @@ export default function AdminUsersPage(): JSX.Element {
   const [users, setUsers] = useState<UserManagementResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedUser, setSelectedUser] = useState<UserDetailResponse | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -36,7 +36,7 @@ export default function AdminUsersPage(): JSX.Element {
   }, [admin, authLoading, router]);
 
   // 加载用户列表
-  const loadUsers = async (page: number = 0) => {
+  const loadUsers = async (page: number = 1) => {
     const token = getAdminToken();
     if (!token || !admin) return;
 
@@ -47,7 +47,7 @@ export default function AdminUsersPage(): JSX.Element {
       setUsers(response.content);
       setCurrentPage(response.currentPage);
       setTotalPages(response.totalPages);
-      setTotal(response.total);
+      setTotal(response.totalItems);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载用户列表失败';
       setError(message);
@@ -58,7 +58,7 @@ export default function AdminUsersPage(): JSX.Element {
 
   useEffect(() => {
     if (admin) {
-      loadUsers(0);
+      loadUsers(1);
     }
   }, [admin]);
 
@@ -111,13 +111,13 @@ export default function AdminUsersPage(): JSX.Element {
 
   // 分页控制
   const handlePrevPage = () => {
-    if (currentPage > 0) {
+    if (currentPage > 1) {
       loadUsers(currentPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
+    if (currentPage < totalPages) {
       loadUsers(currentPage + 1);
     }
   };
@@ -245,19 +245,19 @@ export default function AdminUsersPage(): JSX.Element {
           {totalPages > 1 && (
             <div className="px-4 py-3 bg-slate-900 border-t border-slate-700 flex justify-between items-center">
               <div className="text-sm text-slate-400">
-                第 {currentPage + 1} 页，共 {totalPages} 页
+                第 {currentPage} 页，共 {totalPages} 页
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={handlePrevPage}
-                  disabled={currentPage === 0}
+                  disabled={currentPage === 1}
                   className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   上一页
                 </button>
                 <button
                   onClick={handleNextPage}
-                  disabled={currentPage >= totalPages - 1}
+                  disabled={currentPage >= totalPages}
                   className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   下一页

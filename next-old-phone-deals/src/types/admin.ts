@@ -12,8 +12,10 @@ export interface PageResponse<T> {
   content: T[];
   currentPage: number;
   totalPages: number;
-  total: number;
-  pageSize: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 /**
@@ -226,5 +228,5 @@ export enum TargetType {
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
-  data: T;
+  data?: T;
 }

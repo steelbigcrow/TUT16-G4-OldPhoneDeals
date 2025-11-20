@@ -22,6 +22,11 @@ export async function getProfile(
     `/profile/${userId}`,
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to get profile');
+  }
+
   return response.data;
 }
 
@@ -39,6 +44,11 @@ export async function updateProfile(
     data,
     { authToken: token }
   );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update profile');
+  }
+
   return response.data;
 }
 
@@ -51,9 +61,13 @@ export async function changePassword(
   data: ChangePasswordRequest,
   token: string
 ): Promise<void> {
-  await apiPut<ApiResponse<void>, ChangePasswordRequest>(
+  const response = await apiPut<ApiResponse<void>, ChangePasswordRequest>(
     `/profile/${userId}/change-password`,
     data,
     { authToken: token }
   );
+
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to change password');
+  }
 }

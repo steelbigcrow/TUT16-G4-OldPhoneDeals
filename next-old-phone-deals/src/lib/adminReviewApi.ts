@@ -20,9 +20,9 @@ export async function getAdminReviews(
     pageSize?: number;
   } = {}
 ): Promise<PageResponse<ReviewManagementResponse>> {
-  const { page = 0, pageSize = 10 } = params;
+  const { page = 1, pageSize = 10 } = params;
   const queryParams = new URLSearchParams({
-    page: page.toString(),
+    page: Math.max(0, page - 1).toString(),
     pageSize: pageSize.toString()
   });
 
