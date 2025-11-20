@@ -4,9 +4,13 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const { initDatabase } = require('./utils/init-db');
+const { startMemoryServer, stopMemoryServer } = require('./utils/memory-server');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+const isTestEnv = process.env.NODE_ENV === 'test';
+const isDevEnv = process.env.NODE_ENV === 'development';
+let server;
 
 // middlewares
 app.use(cors({
@@ -82,28 +86,68 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-// database connection and initialization
-// configure mongodb://mongoadmin:secret@some-mongo.orb.local:27017/ in .env file
-mongoose.connect(process.env.MONGODB_URI)
-    .then(async () => {
-        console.log('Connected to MongoDB');
-        
-        // initialize database in development environment
-        if (process.env.NODE_ENV === 'development') {
-            try {
-                await initDatabase();
-            } catch (error) {
-                console.error('Failed to initialize database:', error);
-            }
-        }
-        
-        // start server
-        app.listen(port, () => {
-            console.log(`后端：Server running at http://localhost:${port}`);
-        });
-    })
-    .catch(err => {
-        console.error('MongoDB connection error:', err);
-        process.exit(1);
-    });
+async function connectToDatabase() {
+    let mongoUri = process.env.MONGODB_URI;
 
+    if (isTestEnv) {
+        mongoUri = await startMemoryServer();
+        console.log(`MongoMemoryServer started for tests at ${mongoUri}`);
+    }
+
+    if (!mongoUri) {
+        throw new Error('MONGODB_URI is not defined.');
+    }
+
+    await mongoose.connect(mongoUri);
+    console.log('Connected to MongoDB');
+
+    // initialize database in development and test environments
+    if (isDevEnv || isTestEnv) {
+        try {
+            await initDatabase();
+        } catch (error) {
+            console.error('Failed to initialize database:', error);
+        }
+    }
+}
+
+async function startServer() {
+    await connectToDatabase();
+
+    server = app.listen(port, () => {
+        console.log(`??:Server running at http://localhost:${port}`);
+    });
+}
+
+async function shutdown() {
+    if (server) {
+        await new Promise(resolve => server.close(resolve));
+    }
+
+    await mongoose.connection.close();
+
+    if (isTestEnv) {
+        await stopMemoryServer();
+    }
+}
+
+function exitProcess(code) {
+    shutdown()
+        .then(() => process.exit(code))
+        .catch(err => {
+            console.error('Error during shutdown:', err);
+            process.exit(code);
+        });
+}
+
+process.on('SIGINT', () => exitProcess(0));
+process.on('SIGTERM', () => exitProcess(0));
+process.on('unhandledRejection', reason => {
+    console.error('Unhandled promise rejection:', reason);
+    exitProcess(1);
+});
+
+startServer().catch(err => {
+    console.error('Failed to start server:', err);
+    exitProcess(1);
+});
