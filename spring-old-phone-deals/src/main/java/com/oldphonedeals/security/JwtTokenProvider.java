@@ -3,6 +3,7 @@ package com.oldphonedeals.security;
 import com.oldphonedeals.entity.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,7 +62,24 @@ public class JwtTokenProvider {
    */
   @PostConstruct
   public void init() {
-    this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+    if (jwtSecret == null || jwtSecret.isBlank()) {
+      throw new IllegalStateException("JWT secret is not configured. Please set JWT_SECRET or jwt.secret");
+    }
+
+    byte[] keyBytes;
+    try {
+      keyBytes = Decoders.BASE64.decode(jwtSecret);
+      log.info("Loaded Base64-encoded JWT secret");
+    } catch (IllegalArgumentException | DecodingException ex) {
+      log.warn("JWT secret is not Base64 encoded; using raw value bytes. Consider providing a Base64 string.");
+      keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+    }
+
+    if (keyBytes.length < 32) {
+      throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes) after decoding");
+    }
+
+    this.key = Keys.hmacShaKeyFor(keyBytes);
     log.info("JWT Token Provider initialized with HS512 algorithm");
   }
 
