@@ -1,8 +1,7 @@
 # Node Frontend Plan - React + TypeScript + Tailwind CSS
 
 ## 项目概述
-
-使用现代 React 技术栈重构 OldPhoneDeals 前端，替换现有 Angular 实现，保持功能和 UI 一致性，并对接 Spring Boot 后端 API。
+使用 React + TypeScript + Tailwind 重构 OldPhoneDeals 前端，替换现有 Angular 实现，接入 Spring Boot REST API（默认 `http://localhost:8080/api`），保持现有功能和 UI 体验。
 
 ---
 
@@ -191,23 +190,87 @@ react-frontend/
 
 ### 4.1 API 基础配置
 
-- **Base URL**: 开发环境通过 Vite 代理到后端
-- **认证**: JWT Bearer Token，存储在 localStorage
-- **请求拦截**: 自动添加 Authorization 头
-- **响应处理**: 统一处理 success/error 响应格式
-- **错误处理**: 401 自动跳转登录，其他错误显示通知
+- **Base URL**: 环境变量 `VITE_API_BASE_URL`（开发默认 `http://localhost:8080/api`）
+- **认证**: JWT Bearer Token，localStorage key `auth_token`
+- **请求拦截**: 自动附加 Authorization 头
+- **响应格式**: 统一 `{ success, message, data }`，类型与后端对齐
+- **错误处理**: 401/403 清理 Token 并跳转登录；其他错误弹出通知
+- **跨域/代理**: Spring Boot 放行 `http://localhost:5173`；Vite devServer 代理 `/api -> http://localhost:8080/api`；生产同源或经网关转发
 
-### 4.2 API 端点分组
+### 4.2 API 端点（Spring Boot）
 
-| 分组 | 路径前缀 | 功能 |
-|------|---------|------|
-| 认证 | /api/auth | 登录、注册、验证、重置密码 |
-| 商品 | /api/phones | 商品 CRUD、搜索、评论 |
-| 购物车 | /api/cart | 购物车管理 |
-| 订单 | /api/orders | 结账、订单查询 |
-| 资料 | /api/profile | 用户资料管理 |
-| 收藏 | /api/wishlist | 收藏夹管理 |
-| 管理 | /api/admin | 管理员所有功能 |
+**认证**
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/login` | POST | 登录 |
+| `/api/register` | POST | 注册 |
+| `/api/verify-email` | GET | 验证邮箱 |
+| `/api/send-reset-password-email` | POST | 发送重置密码邮件 |
+| `/api/reset-password` | POST | 重置密码 |
+| `/api/check-verified` | GET | 查询验证状态 |
+| `/api/user-info` | GET | 获取当前用户信息 |
+
+**商品 / 评论**
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/phones` | GET | 商品列表（支持 search/special/sort/page） |
+| `/api/phones/{phoneId}` | GET | 商品详情 |
+| `/api/phones/by-seller/{sellerId}` | GET | 某卖家商品 |
+| `/api/phones/{phoneId}/reviews` | GET | 商品评论分页 |
+| `/api/phones/{phoneId}/reviews` | POST | 添加评论 |
+| `/api/phones/{phoneId}/reviews/{reviewId}/visibility` | PATCH | 切换评论可见性 |
+| `/api/phones/{phoneId}` | DELETE | 删除商品 |
+| `/api/phones/{phoneId}/disable` | PUT | 上/下架商品 |
+| `/api/phones` | POST | 创建商品 |
+| `/api/phones/{phoneId}` | PUT | 更新商品 |
+| `/api/upload-image` | POST | 上传图片（multipart/form-data） |
+| `/api/phones/reviews/by-seller` | GET | 卖家全部评论 |
+
+**购物车 / 订单**
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/cart` | GET | 获取购物车 |
+| `/api/cart/items` | POST | 添加/更新购物车商品 |
+| `/api/cart/items/{phoneId}` | PATCH | 更新数量 |
+| `/api/cart/items/{phoneId}` | DELETE | 移除商品 |
+| `/api/orders` | POST | 结账创建订单 |
+| `/api/orders` | GET | 订单列表 |
+| `/api/orders/{orderId}` | GET | 订单详情 |
+
+**资料 / 收藏**
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/profile` | GET | 获取个人资料 |
+| `/api/profile` | PUT | 更新个人资料 |
+| `/api/profile/change-password` | POST | 修改密码 |
+| `/api/wishlist` | GET | 收藏夹列表 |
+| `/api/wishlist/{phoneId}` | POST | 加入收藏 |
+| `/api/wishlist/{phoneId}` | DELETE | 移除收藏 |
+
+**管理员**
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/admin/login` | POST | 管理员登录 |
+| `/api/admin/profile` | GET/PUT | 获取/更新管理员资料 |
+| `/api/admin/stats` | GET | 仪表盘统计 |
+| `/api/admin/users` | GET | 用户列表（search/isDisabled） |
+| `/api/admin/users/{userId}` | GET/PUT/DELETE | 用户详情/更新/删除 |
+| `/api/admin/users/{userId}/toggle-disabled` | PUT | 启用/停用用户 |
+| `/api/admin/phones` | GET | 商品列表（支持搜索/分页） |
+| `/api/admin/phones/{phoneId}` | PUT/DELETE | 更新/删除商品 |
+| `/api/admin/phones/{phoneId}/toggle-disabled` | PUT | 切换商品上下架 |
+| `/api/admin/reviews` | GET | 评论列表（visibility/reviewerId/phoneId/search） |
+| `/api/admin/reviews/{phoneId}/{reviewId}/toggle-visibility` | PUT | 切换评论可见性 |
+| `/api/admin/reviews/{phoneId}/{reviewId}` | DELETE | 删除评论 |
+| `/api/admin/orders` | GET | 订单列表（userId/日期区间） |
+| `/api/admin/orders/{orderId}` | GET | 订单详情 |
+| `/api/admin/orders/stats` | GET | 销售统计 |
+| `/api/admin/logs` | GET | 操作日志 |
 
 ---
 
