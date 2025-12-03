@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -657,9 +658,8 @@ class AdminServiceTest {
     void testGetAllOrders_ReturnsPagedResults() {
         // Arrange
         List<Order> orders = Arrays.asList(testOrder);
-        Page<Order> orderPage = new PageImpl<>(orders);
-        when(orderRepository.findAll(any(Pageable.class))).thenReturn(orderPage);
-        when(userRepository.findById("user-id")).thenReturn(Optional.of(testUser));
+        when(orderRepository.findAll()).thenReturn(orders);
+        when(userRepository.findAllById(any())).thenReturn(List.of(testUser));
 
         // Act
         PageResponse<OrderManagementResponse> response = adminService.getAllOrders(0, 10);
@@ -667,7 +667,7 @@ class AdminServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(1, response.getContent().size());
-        verify(orderRepository, times(1)).findAll(any(Pageable.class));
+        verify(orderRepository, times(1)).findAll();
     }
 
     @Test
@@ -711,15 +711,89 @@ class AdminServiceTest {
                 .build();
         
         when(orderRepository.findAll()).thenReturn(Arrays.asList(testOrder, anotherOrder));
-        when(userRepository.findById("user-id")).thenReturn(Optional.of(testUser));
+        when(userRepository.findAllById(any())).thenReturn(List.of(testUser));
 
         // Act
-        PageResponse<OrderManagementResponse> response = adminService.getAllOrders(0, 10, "user-id", null, null);
+        PageResponse<OrderManagementResponse> response = adminService.getAllOrders(0, 10, "user-id", null, null, null, null, null, null);
 
         // Assert
         assertNotNull(response);
         assertEquals(1, response.getContent().size());
         assertEquals("user-id", response.getContent().get(0).getUserId());
+    }
+
+    @Test
+    void testGetAllOrders_WithSearchAndBrandFilters() {
+        // Arrange
+        Order.OrderItem matchingItem = Order.OrderItem.builder()
+                .title("Nokia Brick")
+                .quantity(1)
+                .price(100.0)
+                .build();
+        Order matchingOrder = Order.builder()
+                .id("order-match")
+                .userId("user-id")
+                .items(List.of(matchingItem))
+                .totalAmount(100.0)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        Order nonMatchingOrder = Order.builder()
+                .id("order-other")
+                .userId("other-user")
+                .items(List.of(Order.OrderItem.builder().title("Other Phone").quantity(1).price(200.0).build()))
+                .totalAmount(200.0)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(orderRepository.findAll()).thenReturn(Arrays.asList(matchingOrder, nonMatchingOrder));
+        when(userRepository.findAllById(any())).thenReturn(List.of(testUser));
+
+        // Act
+        PageResponse<OrderManagementResponse> response = adminService.getAllOrders(
+                0, 10, null, null, null, "john", "Nokia", "totalAmount", "asc");
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(1, response.getContent().size());
+        assertEquals("order-match", response.getContent().get(0).getId());
+    }
+
+    @Test
+    void testExportOrders_ReturnsJsonPayload() {
+        // Arrange
+        Order.OrderItem matchingItem = Order.OrderItem.builder()
+                .title("Test Phone")
+                .quantity(2)
+                .price(300.0)
+                .build();
+        Order exportOrder = Order.builder()
+                .id("order-export")
+                .userId("user-id")
+                .items(List.of(matchingItem))
+                .totalAmount(600.0)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(orderRepository.findAll()).thenReturn(List.of(exportOrder));
+        when(userRepository.findAllById(any())).thenReturn(List.of(testUser));
+
+        // Act
+        OrderExportResult result = adminService.exportOrders("json", null, null, null, null, null, null, null);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("orders.json", result.getFileName());
+        assertEquals("application/json", result.getContentType());
+        String payload = new String(result.getContent(), StandardCharsets.UTF_8);
+        assertTrue(payload.contains("John"));
+        assertTrue(payload.contains("Test Phone"));
+    }
+
+    @Test
+    void testExportOrders_InvalidFormat_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () ->
+                adminService.exportOrders("pdf", null, null, null, null, null, null, null));
     }
 
     @Test

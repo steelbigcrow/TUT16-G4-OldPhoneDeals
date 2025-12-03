@@ -14,6 +14,8 @@ import com.oldphonedeals.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -277,12 +279,47 @@ public class AdminController {
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        PageResponse<OrderManagementResponse> response = adminService.getAllOrders(page, pageSize, userId, startDate, endDate);
-        if (response == null) {
-            response = adminService.getAllOrders(page, pageSize);
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String brandFilter,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+        if (page < 0 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
         }
-        return ResponseEntity.ok(ApiResponse.success(response));
+        try {
+            PageResponse<OrderManagementResponse> response = adminService.getAllOrders(
+                    page, pageSize, userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    /**
+     * 订单导出
+     * GET /api/admin/orders/export?format=csv|json
+     */
+    @GetMapping("/orders/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> exportOrders(
+            @RequestParam(defaultValue = "csv") String format,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String brandFilter,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+        try {
+            OrderExportResult result = adminService.exportOrders(format, userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.getFileName() + "\"");
+            headers.add(HttpHeaders.CONTENT_TYPE, result.getContentType());
+            return new ResponseEntity<>(result.getContent(), headers, HttpStatus.OK);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        }
     }
 
     /**

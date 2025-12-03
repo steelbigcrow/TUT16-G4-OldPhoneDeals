@@ -35,6 +35,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -623,7 +624,8 @@ class AdminControllerTest {
                 .itemsPerPage(10)
                 .build();
 
-        when(adminService.getAllOrders(anyInt(), anyInt())).thenReturn(pageResponse);
+        when(adminService.getAllOrders(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(pageResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/admin/orders")
@@ -634,7 +636,7 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.data.content").isArray())
                 .andExpect(jsonPath("$.data.totalPages").value(4));
 
-        verify(adminService, times(1)).getAllOrders(anyInt(), anyInt(), any(), any(), any());
+        verify(adminService, times(1)).getAllOrders(eq(0), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(), eq("createdAt"), eq("desc"));
     }
 
     @Test
@@ -656,19 +658,73 @@ class AdminControllerTest {
                 .itemsPerPage(10)
                 .build();
 
-        when(adminService.getAllOrders(anyInt(), anyInt(), eq("user123"), any(), any()))
+        when(adminService.getAllOrders(eq(0), eq(10), eq("user123"), isNull(), isNull(),
+                eq("john"), eq("Nokia"), eq("totalAmount"), eq("asc")))
                 .thenReturn(pageResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/admin/orders")
                         .param("page", "0")
                         .param("pageSize", "10")
-                        .param("userId", "user123"))
+                        .param("userId", "user123")
+                        .param("searchTerm", "john")
+                        .param("brandFilter", "Nokia")
+                        .param("sortBy", "totalAmount")
+                        .param("sortOrder", "asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalItems").value(1));
 
-        verify(adminService, times(1)).getAllOrders(eq(0), eq(10), eq("user123"), isNull(), isNull());
+        verify(adminService, times(1)).getAllOrders(eq(0), eq(10), eq("user123"), isNull(), isNull(),
+                eq("john"), eq("Nokia"), eq("totalAmount"), eq("asc"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("testGetAllOrders_InvalidPagination_ReturnsBadRequest")
+    void testGetAllOrders_InvalidPagination_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/admin/orders")
+                        .param("page", "-1")
+                        .param("pageSize", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+        verify(adminService, never()).getAllOrders(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("testExportOrders_Csv_ReturnsFile")
+    void testExportOrders_Csv_ReturnsFile() throws Exception {
+        OrderExportResult exportResult = OrderExportResult.builder()
+                .fileName("orders.csv")
+                .contentType("text/csv")
+                .content("Timestamp,Buyer Name,Buyer Email,Items,Total Amount".getBytes())
+                .build();
+
+        when(adminService.exportOrders(eq("csv"), isNull(), isNull(), isNull(), isNull(), isNull(), eq("createdAt"), eq("desc")))
+                .thenReturn(exportResult);
+
+        mockMvc.perform(get("/api/admin/orders/export").param("format", "csv"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"orders.csv\""));
+
+        verify(adminService, times(1)).exportOrders(eq("csv"), isNull(), isNull(), isNull(), isNull(), isNull(), eq("createdAt"), eq("desc"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("testExportOrders_InvalidFormat_ReturnsBadRequest")
+    void testExportOrders_InvalidFormat_ReturnsBadRequest() throws Exception {
+        when(adminService.exportOrders(eq("pdf"), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("Invalid format. Supported formats: csv, json"));
+
+        mockMvc.perform(get("/api/admin/orders/export").param("format", "pdf"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Invalid format. Supported formats: csv, json"));
+
+        verify(adminService, times(1)).exportOrders(eq("pdf"), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

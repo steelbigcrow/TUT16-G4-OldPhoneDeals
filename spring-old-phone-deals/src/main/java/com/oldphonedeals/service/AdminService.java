@@ -208,10 +208,16 @@ public interface AdminService {
      * @param userId    用户ID过滤（可选）
      * @param startDate 开始日期过滤（可选，ISO格式字符串）
      * @param endDate   结束日期过滤（可选，ISO格式字符串）
+     * @param searchTerm 搜索关键词（可选，搜索订单内容）
+     * @param brandFilter 品牌过滤（可选）
+     * @param sortBy     排序字段（可选）
+     * @param sortOrder  排序顺序（可选）
      * @return 订单分页响应
      */
     PageResponse<OrderManagementResponse> getAllOrders(int page, int pageSize, String userId,
-                                                       String startDate, String endDate);
+                                                       String startDate, String endDate,
+                                                       String searchTerm, String brandFilter,
+                                                       String sortBy, String sortOrder);
 
     /**
      * 获取所有订单（分页，兼容无参数版本）
@@ -236,4 +242,21 @@ public interface AdminService {
      * @return 订单详情
      */
     OrderDetailResponse getOrderDetail(String orderId);
+
+    /**
+     * 导出订单数据
+     *
+     * @param format     导出格式（csv/json）
+     * @param userId     用户ID（可选）
+     * @param startDate  开始日期（可选，ISO格式字符串）
+     * @param endDate    结束日期（可选，ISO格式字符串）
+     * @param searchTerm 搜索关键词（可选）
+     * @param brandFilter 品牌过滤（可选）
+     * @param sortBy     排序字段（可选）
+     * @param sortOrder  排序顺序（可选）
+     * @return 导出结果（包含文件名和下载URL）
+     */
+    OrderExportResult exportOrders(String format, String userId, String startDate,
+                                   String endDate, String searchTerm, String brandFilter,
+                                   String sortBy, String sortOrder);
 }

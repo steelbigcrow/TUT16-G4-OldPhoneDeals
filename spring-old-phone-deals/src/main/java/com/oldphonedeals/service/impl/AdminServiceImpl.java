@@ -28,9 +28,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -50,6 +57,8 @@ public class AdminServiceImpl implements AdminService {
     private final AdminLogService adminLogService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String DEFAULT_SORT_FIELD = "createdAt";
 
     // ============================================
     // 管理员认证模块
@@ -655,73 +664,73 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public PageResponse<OrderManagementResponse> getAllOrders(int page, int pageSize, String userId,
-                                                              String startDate, String endDate) {
-        log.info("Fetching orders with filters: userId={}, startDate={}, endDate={}", userId, startDate, endDate);
+                                                              String startDate, String endDate,
+                                                              String searchTerm, String brandFilter,
+                                                              String sortBy, String sortOrder) {
+        log.info("Fetching orders with filters: userId={}, startDate={}, endDate={}, searchTerm={}, brandFilter={}, sortBy={}, sortOrder={}",
+                userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
 
-        boolean hasFilters = (userId != null && !userId.isEmpty())
-                || (startDate != null && !startDate.isEmpty())
-                || (endDate != null && !endDate.isEmpty());
+        int safePage = Math.max(page, 0);
+        int safePageSize = pageSize > 0 ? pageSize : 10;
 
-        if (!hasFilters) {
-            Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-            Page<Order> orderPage = orderRepository.findAll(pageable);
-            Page<OrderManagementResponse> mappedPage = orderPage.map(this::convertToOrderManagementResponse);
-            return PageResponse.of(mappedPage);
-        }
+        List<EnrichedOrder> filteredOrders = filterAndSortOrders(userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
 
-        // 获取所有订单
-        List<Order> allOrders = orderRepository.findAll();
+        int startIdx = safePage * safePageSize;
+        int endIdx = Math.min(startIdx + safePageSize, filteredOrders.size());
 
-        // 应用过滤条件
-        List<Order> filteredOrders = allOrders.stream()
-                .filter(order -> {
-                    // 用户ID过滤
-                    if (userId != null && !userId.isEmpty() && !order.getUserId().equals(userId)) {
-                        return false;
-                    }
-
-                    // 日期范围过滤
-                    if (startDate != null && !startDate.isEmpty()) {
-                        try {
-                            LocalDateTime startDt = LocalDateTime.parse(startDate);
-                            if (order.getCreatedAt().isBefore(startDt)) {
-                                return false;
-                            }
-                        } catch (Exception e) {
-                            log.warn("Failed to parse startDate: {}", startDate);
-                        }
-                    }
-
-                    if (endDate != null && !endDate.isEmpty()) {
-                        try {
-                            LocalDateTime endDt = LocalDateTime.parse(endDate);
-                            if (order.getCreatedAt().isAfter(endDt)) {
-                                return false;
-                            }
-                        } catch (Exception e) {
-                            log.warn("Failed to parse endDate: {}", endDate);
-                        }
-                    }
-
-                    return true;
-                })
-                .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
-                .collect(Collectors.toList());
-
-        int startIdx = page * pageSize;
-        int endIdx = Math.min(startIdx + pageSize, filteredOrders.size());
-        List<Order> pageContent = startIdx < filteredOrders.size()
-                ? filteredOrders.subList(startIdx, endIdx)
+        List<OrderManagementResponse> pageContent = startIdx < filteredOrders.size()
+                ? filteredOrders.subList(startIdx, endIdx).stream()
+                .map(entry -> convertToOrderManagementResponse(entry.order(), entry.user()))
+                .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        Page<Order> pageImpl = new PageImpl<>(pageContent, PageRequest.of(page, pageSize), filteredOrders.size());
-        Page<OrderManagementResponse> mappedPage = pageImpl.map(this::convertToOrderManagementResponse);
-        return PageResponse.of(mappedPage);
+        int totalPages = safePageSize > 0 ? (int) Math.ceil((double) filteredOrders.size() / safePageSize) : 0;
+
+        return PageResponse.<OrderManagementResponse>builder()
+                .content(pageContent)
+                .currentPage(safePage + 1)
+                .totalPages(totalPages)
+                .totalItems((long) filteredOrders.size())
+                .itemsPerPage(safePageSize)
+                .hasNext(safePage + 1 < totalPages)
+                .hasPrevious(safePage > 0)
+                .build();
     }
 
     @Override
     public PageResponse<OrderManagementResponse> getAllOrders(int page, int pageSize) {
-        return getAllOrders(page, pageSize, null, null, null);
+        return getAllOrders(page, pageSize, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public OrderExportResult exportOrders(String format, String userId, String startDate,
+                                          String endDate, String searchTerm, String brandFilter,
+                                          String sortBy, String sortOrder) {
+        String normalizedFormat = (format == null || format.isBlank()) ? "csv" : format.trim().toLowerCase();
+        if (!normalizedFormat.equals("csv") && !normalizedFormat.equals("json")) {
+            throw new IllegalArgumentException("Invalid format. Supported formats: csv, json");
+        }
+
+        List<EnrichedOrder> filteredOrders = filterAndSortOrders(userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
+        List<OrderExportResponse> exportRows = filteredOrders.stream()
+                .map(this::convertToOrderExportResponse)
+                .collect(Collectors.toList());
+
+        if ("json".equals(normalizedFormat)) {
+            byte[] jsonBytes = writeJson(exportRows);
+            return OrderExportResult.builder()
+                    .fileName("orders.json")
+                    .contentType("application/json")
+                    .content(jsonBytes)
+                    .build();
+        }
+
+        String csv = buildCsv(exportRows);
+        return OrderExportResult.builder()
+                .fileName("orders.csv")
+                .contentType("text/csv")
+                .content(csv.getBytes(StandardCharsets.UTF_8))
+                .build();
     }
 
     @Override
@@ -784,6 +793,197 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
+    private List<EnrichedOrder> filterAndSortOrders(String userId, String startDate, String endDate,
+                                                    String searchTerm, String brandFilter,
+                                                    String sortBy, String sortOrder) {
+        List<Order> allOrders = orderRepository.findAll();
+        Map<String, User> userMap = buildUserMap(allOrders);
+
+        LocalDateTime startDt = parseDateOrNull(startDate, "startDate");
+        LocalDateTime endDt = parseDateOrNull(endDate, "endDate");
+        String searchLower = (searchTerm != null && !searchTerm.trim().isEmpty())
+                ? searchTerm.trim().toLowerCase()
+                : null;
+        String brandLower = normalizeBrandFilter(brandFilter);
+
+        Comparator<EnrichedOrder> comparator = buildOrderComparator(sortBy, sortOrder);
+
+        return allOrders.stream()
+                .map(order -> new EnrichedOrder(order, userMap.get(order.getUserId())))
+                .filter(entry -> filterOrder(entry, userId, startDt, endDt, searchLower, brandLower))
+                .sorted(comparator)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, User> buildUserMap(List<Order> orders) {
+        Set<String> userIds = orders.stream()
+                .map(Order::getUserId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        return users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    }
+
+    private boolean filterOrder(EnrichedOrder entry, String userId, LocalDateTime startDt,
+                                LocalDateTime endDt, String searchLower, String brandLower) {
+        Order order = entry.order();
+        if (userId != null && !userId.isEmpty() && !userId.equals(order.getUserId())) {
+            return false;
+        }
+
+        LocalDateTime createdAt = order.getCreatedAt();
+        if (startDt != null && createdAt != null && createdAt.isBefore(startDt)) {
+            return false;
+        }
+        if (endDt != null && createdAt != null && createdAt.isAfter(endDt)) {
+            return false;
+        }
+
+        if (brandLower != null) {
+            boolean matchesBrand = order.getItems() != null && order.getItems().stream()
+                    .anyMatch(item -> item.getTitle() != null && item.getTitle().toLowerCase().contains(brandLower));
+            if (!matchesBrand) {
+                return false;
+            }
+        }
+
+        if (searchLower != null && !matchesSearchTerm(entry, searchLower)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean matchesSearchTerm(EnrichedOrder entry, String searchLower) {
+        boolean matchesItems = entry.order().getItems() != null && entry.order().getItems().stream()
+                .anyMatch(item -> item.getTitle() != null && item.getTitle().toLowerCase().contains(searchLower));
+        if (matchesItems) {
+            return true;
+        }
+
+        User user = entry.user();
+        if (user == null) {
+            return false;
+        }
+        boolean matchesEmail = user.getEmail() != null && user.getEmail().toLowerCase().contains(searchLower);
+        String fullName = ((user.getFirstName() != null ? user.getFirstName() : "") + " " +
+                (user.getLastName() != null ? user.getLastName() : "")).trim().toLowerCase();
+        return matchesEmail || fullName.contains(searchLower);
+    }
+
+    private String normalizeBrandFilter(String brandFilter) {
+        if (brandFilter == null) {
+            return null;
+        }
+        String trimmed = brandFilter.trim();
+        if (trimmed.isEmpty() || "All Brands".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed.toLowerCase();
+    }
+
+    private LocalDateTime parseDateOrNull(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid " + fieldName + " format. Expecting ISO-8601 string");
+        }
+    }
+
+    private Comparator<EnrichedOrder> buildOrderComparator(String sortBy, String sortOrder) {
+        String sortField = (sortBy != null && !sortBy.isBlank()) ? sortBy.trim() : DEFAULT_SORT_FIELD;
+        Comparator<EnrichedOrder> comparator;
+        if ("totalAmount".equalsIgnoreCase(sortField)) {
+            comparator = Comparator.comparing((EnrichedOrder e) ->
+                    e.order().getTotalAmount() != null ? e.order().getTotalAmount() : 0.0);
+        } else {
+            comparator = Comparator.comparing((EnrichedOrder e) ->
+                    e.order().getCreatedAt() != null ? e.order().getCreatedAt() : LocalDateTime.MIN);
+        }
+
+        boolean ascending = "asc".equalsIgnoreCase(sortOrder);
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+        return comparator;
+    }
+
+    private OrderExportResponse convertToOrderExportResponse(EnrichedOrder entry) {
+        Order order = entry.order();
+        User user = entry.user();
+        String buyerName = user != null
+                ? ((user.getFirstName() != null ? user.getFirstName() : "") + " " +
+                (user.getLastName() != null ? user.getLastName() : "")).trim()
+                : "";
+        String buyerEmail = user != null && user.getEmail() != null ? user.getEmail() : "";
+
+        List<OrderExportResponse.OrderExportItem> items = order.getItems() != null
+                ? order.getItems().stream()
+                .map(item -> OrderExportResponse.OrderExportItem.builder()
+                        .title(item.getTitle())
+                        .quantity(item.getQuantity())
+                        .build())
+                .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        return OrderExportResponse.builder()
+                .timestamp(order.getCreatedAt() != null ? order.getCreatedAt().toString() : "")
+                .buyerName(buyerName)
+                .buyerEmail(buyerEmail)
+                .items(items)
+                .totalAmount(order.getTotalAmount())
+                .build();
+    }
+
+    private byte[] writeJson(List<OrderExportResponse> exportRows) {
+        try {
+            return OBJECT_MAPPER.writeValueAsBytes(exportRows);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize export payload", e);
+            throw new RuntimeException("Failed to generate JSON export", e);
+        }
+    }
+
+    private String buildCsv(List<OrderExportResponse> exportRows) {
+        List<String> rows = new ArrayList<>();
+        rows.add("Timestamp,Buyer Name,Buyer Email,Items,Total Amount");
+
+        for (OrderExportResponse row : exportRows) {
+            String itemsSummary = row.getItems() != null
+                    ? row.getItems().stream()
+                    .map(item -> (item.getTitle() != null ? item.getTitle() : "") + " x " +
+                            (item.getQuantity() != null ? item.getQuantity() : 0))
+                    .collect(Collectors.joining("; "))
+                    : "";
+
+            String line = String.join(",",
+                    escapeCsv(row.getTimestamp()),
+                    escapeCsv(row.getBuyerName()),
+                    escapeCsv(row.getBuyerEmail()),
+                    escapeCsv(itemsSummary),
+                    escapeCsv(row.getTotalAmount() != null ? row.getTotalAmount().toString() : ""));
+            rows.add(line);
+        }
+
+        return String.join("\n", rows);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value;
+        if (value.contains("\"") || value.contains(",") || value.contains("\n")) {
+            escaped = "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return escaped;
+    }
+
+    private record EnrichedOrder(Order order, User user) {}
+
     // ============================================
     // 辅助方法 - DTO转换
     // ============================================
@@ -831,18 +1031,19 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
-    private OrderManagementResponse convertToOrderManagementResponse(Order order) {
+    private OrderManagementResponse convertToOrderManagementResponse(Order order, User user) {
         // 获取用户信息
         String userName = "";
         String userEmail = "";
-        try {
-            User user = userRepository.findById(order.getUserId()).orElse(null);
-            if (user != null) {
-                userName = user.getFirstName() + " " + user.getLastName();
-                userEmail = user.getEmail();
-            }
-        } catch (Exception e) {
-            log.error("Failed to fetch user for order: {}", e.getMessage());
+        User resolvedUser = user;
+        if (resolvedUser == null && order.getUserId() != null) {
+            resolvedUser = userRepository.findById(order.getUserId()).orElse(null);
+        }
+        if (resolvedUser != null) {
+            String firstName = resolvedUser.getFirstName() != null ? resolvedUser.getFirstName() : "";
+            String lastName = resolvedUser.getLastName() != null ? resolvedUser.getLastName() : "";
+            userName = (firstName + " " + lastName).trim();
+            userEmail = resolvedUser.getEmail();
         }
 
         // 生成地址摘要
