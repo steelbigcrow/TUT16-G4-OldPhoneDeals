@@ -106,19 +106,91 @@ exports.getReviewsByPhone = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(phoneId)) {
       return res.json({ success: false, message: 'Invalid phone ID' });
     }
+
+    let {
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      visibility = 'all',
+      search = ''
+    } = req.query;
+
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+
+    const allowedSort = ['rating', 'createdAt'];
+    const allowedOrder = ['asc', 'desc'];
+    const allowedVisibility = ['all', 'visible', 'hidden'];
+
+    if (!Number.isInteger(page) || page < 1) page = 1;
+    if (!Number.isInteger(limit) || limit < 1) limit = 10;
+    if (!allowedSort.includes(sortBy)) sortBy = 'createdAt';
+    if (!allowedOrder.includes(sortOrder)) sortOrder = 'desc';
+    if (!allowedVisibility.includes(visibility)) visibility = 'all';
+    search = typeof search === 'string' ? search.trim() : '';
+
     const phone = await Phone.findById(phoneId).populate('reviews.reviewerId', 'firstName lastName');
     if (!phone) {
       return res.json({ success: false, message: 'Phone not found' });
     }
-    const formatted = phone.reviews.map(r => ({
-      reviewId: r._id,
-      reviewer: r.reviewerId ? `${r.reviewerId.firstName} ${r.reviewerId.lastName}` : 'Unknown',
-      rating: r.rating,
-      comment: r.comment,
-      isHidden: r.isHidden,
-      createdAt: r.createdAt
-    }));
-    res.json({ success: true, reviews: formatted });
+
+    const phoneIdString = phone._id.toString();
+    const reviews = (phone.reviews || []).map(review => {
+      const reviewerDoc = review.reviewerId && review.reviewerId.firstName !== undefined ? review.reviewerId : null;
+      const reviewerNameRaw = reviewerDoc
+        ? `${reviewerDoc.firstName} ${reviewerDoc.lastName}`.trim()
+        : '';
+      const reviewerName = reviewerNameRaw || 'Unknown';
+      const reviewerId = reviewerDoc
+        ? reviewerDoc._id?.toString?.()
+        : review.reviewerId && typeof review.reviewerId.toString === 'function'
+          ? review.reviewerId.toString()
+          : undefined;
+
+      return {
+        reviewId: review._id ? review._id.toString() : undefined,
+        phoneId: phoneIdString,
+        phoneTitle: phone.title,
+        rating: review.rating,
+        comment: review.comment,
+        isHidden: !!review.isHidden,
+        createdAt: review.createdAt,
+        reviewerName,
+        reviewerId
+      };
+    });
+
+    let filtered = reviews;
+    if (visibility === 'visible') {
+      filtered = filtered.filter(r => !r.isHidden);
+    } else if (visibility === 'hidden') {
+      filtered = filtered.filter(r => r.isHidden);
+    }
+
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      filtered = filtered.filter(r =>
+        (r.comment && r.comment.toLowerCase().includes(lowerSearch)) ||
+        (r.reviewerName && r.reviewerName.toLowerCase().includes(lowerSearch))
+      );
+    }
+
+    filtered.sort((a, b) => {
+      const direction = sortOrder === 'asc' ? 1 : -1;
+      if (sortBy === 'rating') {
+        return (a.rating - b.rating) * direction;
+      }
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (aTime - bTime) * direction;
+    });
+
+    const total = filtered.length;
+    const start = (page - 1) * limit;
+    const paginated = filtered.slice(start, start + limit);
+
+    return res.json({ success: true, total, page, limit, reviews: paginated });
   } catch (err) {
     console.error('adminReview.getReviewsByPhone error:', err);
     res.json({ success: false, message: 'Server error' });

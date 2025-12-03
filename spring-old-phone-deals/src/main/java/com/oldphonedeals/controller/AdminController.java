@@ -277,6 +277,28 @@ public class AdminController {
     }
 
     /**
+     * 获取指定商品的评论（分页、排序、可见性、搜索）
+     * GET /api/admin/reviews/phones/{phoneId}
+     */
+    @GetMapping({"/reviews/phones/{phoneId}", "/phones/{phoneId}/reviews"})
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PhoneReviewListResponse> getPhoneReviews(
+            @PathVariable String phoneId,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "limit", defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder,
+            @RequestParam(defaultValue = "all") String visibility,
+            @RequestParam(required = false) String search) {
+        PhoneReviewListResponse response = adminService.getReviewsByPhone(phoneId, page, limit, sortBy, sortOrder, visibility, search);
+        if (!response.isSuccess()) {
+            HttpStatus status = "Invalid phone ID".equalsIgnoreCase(response.getMessage()) ? HttpStatus.BAD_REQUEST : HttpStatus.NOT_FOUND;
+            return new ResponseEntity<>(response, status);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 切换评论可见性
      * PUT /api/admin/reviews/{phoneId}/{reviewId}/toggle-visibility
      */

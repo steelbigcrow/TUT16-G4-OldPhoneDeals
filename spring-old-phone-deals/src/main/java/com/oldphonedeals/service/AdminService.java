@@ -188,6 +188,21 @@ public interface AdminService {
     PageResponse<ReviewManagementResponse> getAllReviews(int page, int pageSize);
 
     /**
+     * 获取指定商品的评论（分页、排序、可见性、搜索）
+     *
+     * @param phoneId    商品ID
+     * @param page       页码（从1开始，非法值回退到1）
+     * @param limit      每页数量（非法值回退到10）
+     * @param sortBy     排序字段（rating|createdAt，默认createdAt）
+     * @param sortOrder  排序方向（asc|desc，默认desc）
+     * @param visibility 可见性过滤（all|visible|hidden）
+     * @param search     搜索评论内容或评论者姓名
+     * @return 对应手机的评论列表
+     */
+    PhoneReviewListResponse getReviewsByPhone(String phoneId, Integer page, Integer limit,
+                                              String sortBy, String sortOrder, String visibility, String search);
+
+    /**
      * 切换评论可见性（隐藏/显示）
      *
      * @param phoneId  商品ID

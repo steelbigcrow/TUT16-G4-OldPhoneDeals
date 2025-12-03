@@ -31,9 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bson.types.ObjectId;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -450,7 +452,7 @@ public class AdminServiceImpl implements AdminService {
                     .reviewRating(review.getRating())
                     .reviewComment(review.getComment())
                     .reviewCreatedAt(review.getCreatedAt())
-                    .isHidden(review.getIsHidden() != null ? review.getIsHidden() : Boolean.FALSE)
+                    .isHidden(Boolean.TRUE.equals(review.getIsHidden()))
                     .build());
             }
         }
@@ -474,6 +476,107 @@ public class AdminServiceImpl implements AdminService {
             .hasNext(safePage + 1 < totalPages)
             .hasPrevious(safePage > 0)
             .build();
+    }
+
+    @Override
+    public PhoneReviewListResponse getReviewsByPhone(String phoneId, Integer page, Integer limit,
+                                                     String sortBy, String sortOrder, String visibility, String search) {
+        if (!ObjectId.isValid(phoneId)) {
+            return PhoneReviewListResponse.error("Invalid phone ID");
+        }
+
+        int normalizedPage = (page != null && page > 0) ? page : 1;
+        int normalizedLimit = (limit != null && limit > 0) ? limit : 10;
+        String normalizedSortBy = "rating".equalsIgnoreCase(sortBy) ? "rating" : "createdAt";
+        String normalizedSortOrder = (sortOrder != null && ("asc".equalsIgnoreCase(sortOrder) || "desc".equalsIgnoreCase(sortOrder)))
+                ? sortOrder.toLowerCase()
+                : "desc";
+        String normalizedVisibility = (visibility != null && ("all".equalsIgnoreCase(visibility)
+                || "visible".equalsIgnoreCase(visibility) || "hidden".equalsIgnoreCase(visibility)))
+                ? visibility.toLowerCase()
+                : "all";
+        String normalizedSearch = search != null ? search.trim() : "";
+
+        Phone phone = phoneRepository.findById(phoneId).orElse(null);
+        if (phone == null) {
+            return PhoneReviewListResponse.error("Phone not found");
+        }
+
+        List<Phone.Review> reviews = phone.getReviews() != null ? phone.getReviews() : List.of();
+        if (reviews.isEmpty()) {
+            return PhoneReviewListResponse.success(0, normalizedPage, normalizedLimit, Collections.emptyList());
+        }
+
+        Set<String> reviewerIds = reviews.stream()
+                .map(Phone.Review::getReviewerId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        Map<String, User> reviewers = reviewerIds.isEmpty()
+                ? Collections.emptyMap()
+                : userRepository.findAllById(reviewerIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<ReviewManagementResponse> mapped = reviews.stream()
+                .map(review -> {
+                    User reviewer = reviewers.get(review.getReviewerId());
+                    String reviewerName = reviewer != null
+                            ? (reviewer.getFirstName() + " " + reviewer.getLastName()).trim()
+                            : "";
+                    if (reviewerName.isBlank()) {
+                        reviewerName = "Unknown";
+                    }
+                    return ReviewManagementResponse.builder()
+                            .reviewId(review.getId())
+                            .phoneId(phone.getId())
+                            .phoneTitle(phone.getTitle())
+                            .reviewerId(review.getReviewerId())
+                            .reviewerName(reviewerName)
+                            .rating(review.getRating())
+                            .comment(review.getComment())
+                            .isHidden(Boolean.TRUE.equals(review.getIsHidden()))
+                            .createdAt(review.getCreatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        List<ReviewManagementResponse> filtered = mapped.stream()
+                .filter(r -> {
+                    if ("visible".equals(normalizedVisibility)) {
+                        return !Boolean.TRUE.equals(r.getIsHidden());
+                    }
+                    if ("hidden".equals(normalizedVisibility)) {
+                        return Boolean.TRUE.equals(r.getIsHidden());
+                    }
+                    return true;
+                })
+                .filter(r -> {
+                    if (normalizedSearch.isEmpty()) {
+                        return true;
+                    }
+                    String lower = normalizedSearch.toLowerCase();
+                    return (r.getComment() != null && r.getComment().toLowerCase().contains(lower)) ||
+                           (r.getReviewerName() != null && r.getReviewerName().toLowerCase().contains(lower));
+                })
+                .collect(Collectors.toList());
+
+        Comparator<ReviewManagementResponse> comparator;
+        if ("rating".equals(normalizedSortBy)) {
+            comparator = Comparator.comparing(ReviewManagementResponse::getRating, Comparator.nullsLast(Integer::compareTo));
+        } else {
+            comparator = Comparator.comparing(ReviewManagementResponse::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+        }
+        if ("desc".equals(normalizedSortOrder)) {
+            comparator = comparator.reversed();
+        }
+        filtered.sort(comparator);
+
+        long total = filtered.size();
+        int startIndex = (normalizedPage - 1) * normalizedLimit;
+        List<ReviewManagementResponse> pageData = startIndex >= filtered.size()
+                ? Collections.emptyList()
+                : filtered.subList(startIndex, Math.min(startIndex + normalizedLimit, filtered.size()));
+
+        return PhoneReviewListResponse.success(total, normalizedPage, normalizedLimit, pageData);
     }
 
     // ============================================
