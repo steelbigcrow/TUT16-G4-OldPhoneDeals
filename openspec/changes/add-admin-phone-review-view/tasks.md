@@ -1,11 +1,10 @@
-## 1. Admin per-phone review API parity
-- [ ] 1.1 Align Node GET `/api/admin/phones/{phoneId}/reviews` with pagination, sort (rating|createdAt), visibility/search filters, consistent response shape, and invalid-id handling.
-- [ ] 1.2 Add/mirror Spring endpoint (e.g., `/api/admin/reviews/phones/{phoneId}` alias) with the same params/shape and validation through AdminService/AdminController.
+## 1. Admin per-phone review API parity baseline (Node)
+- [ ] 1.1 Confirm the Node GET `/api/admin/phones/{phoneId}/reviews` supports pagination, sort (rating|createdAt), visibility/search filters, normalized response shape, and invalid-id handling as the parity target; adjust if gaps remain.
 
-## 2. Admin UI integration
-- [ ] 2.1 Add AdminService method for per-phone reviews and wire a phone-level review modal/section with pagination/filter controls (search, visibility, sort) pulling from the new endpoint.
-- [ ] 2.2 Hook hide/show/delete actions to refresh from the per-phone endpoint and surface success/error states without breaking the existing review management list.
+## 2. Spring Boot per-phone review endpoint with Spring path
+- [ ] 2.1 Implement a Spring Boot admin per-phone review endpoint (e.g., `/api/admin/reviews/phones/{phoneId}` with optional alias) matching Node functionality, params/defaults, and validation while keeping Spring-specific routing.
+- [ ] 2.2 Normalize the Spring response to the Node contract (`success`, `total`, `page`, `limit`, `reviews[{reviewId, phoneId, phoneTitle, rating, comment, isHidden, createdAt, reviewerName, reviewerId?}]`) and ensure invalid phone ids return clear errors without partial data.
 
 ## 3. Validation
 - [ ] 3.1 Run `openspec validate add-admin-phone-review-view --strict`.
-- [ ] 3.2 Manual check: per-phone view returns expected data (happy/invalid id) on Node and Spring backends; existing admin review list still loads.
+- [ ] 3.2 Manual check: Node and Spring per-phone endpoints return the same payload shape for happy path and invalid phone ids; no frontend changes are introduced.
