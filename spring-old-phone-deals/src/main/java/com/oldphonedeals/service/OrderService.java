@@ -1,6 +1,7 @@
 package com.oldphonedeals.service;
 
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
+import com.oldphonedeals.dto.response.order.OrderPageResponse;
 import com.oldphonedeals.dto.response.order.OrderResponse;
 
 import java.util.List;
@@ -53,6 +54,19 @@ public interface OrderService {
      * @return 订单列表
      */
     List<OrderResponse> getUserOrders(String userId);
+
+    /**
+     * 获取用户订单列表（分页）
+     * <p>
+     * 按创建时间降序排序，页码从 1 开始。
+     * </p>
+     *
+     * @param userId 用户ID
+     * @param page 页码（从 1 开始）
+     * @param pageSize 每页数量
+     * @return 包含订单列表和分页信息的响应
+     */
+    OrderPageResponse getUserOrders(String userId, int page, int pageSize);
     
     /**
      * 获取订单详情

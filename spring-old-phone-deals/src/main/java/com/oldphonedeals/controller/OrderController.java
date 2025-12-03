@@ -2,6 +2,7 @@ package com.oldphonedeals.controller;
 
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
 import com.oldphonedeals.dto.response.ApiResponse;
+import com.oldphonedeals.dto.response.order.OrderPageResponse;
 import com.oldphonedeals.dto.response.order.OrderResponse;
 import com.oldphonedeals.security.SecurityContextHelper;
 import com.oldphonedeals.service.OrderService;
@@ -72,6 +73,45 @@ public class OrderController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Order created successfully"));
+    }
+
+    /**
+     * 获取当前登录用户的订单列表（分页）
+     * <p>
+     * GET /api/orders?page=1&pageSize=10
+     * 需要认证，用户从 JWT 中推断。
+     * </p>
+     *
+     * <p>
+     * 响应结构与旧的 Node.js 实现保持语义一致：
+     * <ul>
+     *   <li>data.items ≈ orders</li>
+     *   <li>data.pagination.totalItems ≈ total</li>
+     *   <li>data.pagination.totalPages ≈ totalPages</li>
+     *   <li>data.pagination.currentPage ≈ currentPage</li>
+     * </ul>
+     * </p>
+     *
+     * @param page 页码（从 1 开始）
+     * @param pageSize 每页数量
+     * @return 包含订单列表和分页信息的响应
+     */
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<OrderPageResponse>> getCurrentUserOrders(
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "pageSize", defaultValue = "10") int pageSize
+    ) {
+        String userId = SecurityContextHelper.getCurrentUserId();
+        log.info("GET /api/orders - Getting paginated orders for user: {}, page: {}, pageSize: {}", userId, page, pageSize);
+
+        if (page < 1 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+
+        OrderPageResponse response = orderService.getUserOrders(userId, page, pageSize);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "Orders retrieved successfully"));
     }
     
     /**

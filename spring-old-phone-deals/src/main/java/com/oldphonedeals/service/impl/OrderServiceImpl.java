@@ -2,6 +2,7 @@ package com.oldphonedeals.service.impl;
 
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
 import com.oldphonedeals.dto.response.order.OrderItemResponse;
+import com.oldphonedeals.dto.response.order.OrderPageResponse;
 import com.oldphonedeals.dto.response.order.OrderResponse;
 import com.oldphonedeals.entity.Cart;
 import com.oldphonedeals.entity.Order;
@@ -14,6 +15,9 @@ import com.oldphonedeals.repository.PhoneRepository;
 import com.oldphonedeals.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -143,6 +147,34 @@ public class OrderServiceImpl implements OrderService {
         return orders.stream()
                 .map(this::buildOrderResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public OrderPageResponse getUserOrders(String userId, int page, int pageSize) {
+        log.debug("Getting paginated orders for user: {}, page: {}, pageSize: {}", userId, page, pageSize);
+
+        int safePage = page > 0 ? page - 1 : 0; // Spring Data pages are 0-based
+        int safePageSize = pageSize > 0 ? pageSize : 10;
+
+        Pageable pageable = PageRequest.of(safePage, safePageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Order> orderPage = orderRepository.findByUserId(userId, pageable);
+
+        List<OrderResponse> items = orderPage.getContent().stream()
+                .map(this::buildOrderResponse)
+                .collect(Collectors.toList());
+
+        OrderPageResponse.Pagination pagination = OrderPageResponse.Pagination.builder()
+                .currentPage(orderPage.getNumber() + 1)
+                .pageSize(orderPage.getSize())
+                .totalPages(orderPage.getTotalPages())
+                .totalItems(orderPage.getTotalElements())
+                .build();
+
+        return OrderPageResponse.builder()
+                .items(items)
+                .pagination(pagination)
+                .build();
     }
     
     @Override
