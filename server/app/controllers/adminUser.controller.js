@@ -212,12 +212,12 @@ exports.getUserPhones = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.json({ success: false, message: 'Invalid user ID' });
     }
-    // verify user exists
+
     const user = await User.findById(userId);
     if (!user) {
       return res.json({ success: false, message: 'User not found' });
     }
-    // parse pagination, sorting, filtering parameters
+
     const pageNum = parseInt(req.query.page, 10) || 1;
     const limitNum = parseInt(req.query.limit, 10) || 10;
     if (isNaN(pageNum) || pageNum < 1) {
@@ -226,24 +226,66 @@ exports.getUserPhones = async (req, res) => {
     if (isNaN(limitNum) || limitNum < 1) {
       return res.json({ success: false, message: 'Invalid limit number' });
     }
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-    const brandFilter = req.query.brand;
+
+    const allowedSortFields = ['createdAt', 'price', 'stock'];
+    const sortBy = allowedSortFields.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
+    if (req.query.sortBy && !allowedSortFields.includes(req.query.sortBy)) {
+      return res.json({ success: false, message: 'Invalid sortBy. Allowed: createdAt, price, stock' });
+    }
+    const sortOrder = req.query.sortOrder === 'asc'
+      ? 1
+      : req.query.sortOrder === 'desc' || !req.query.sortOrder
+        ? -1
+        : null;
+    if (sortOrder === null) {
+      return res.json({ success: false, message: 'Invalid sortOrder. Allowed: asc, desc' });
+    }
+
+    const brandFilter = req.query.brand && req.query.brand !== 'all' ? req.query.brand : null;
     const skip = (pageNum - 1) * limitNum;
-    // build query conditions
     const filter = { seller: new mongoose.Types.ObjectId(userId) };
-    if (brandFilter && brandFilter !== 'all') {
+    if (brandFilter) {
       filter.brand = brandFilter;
     }
-    const total = await Phone.countDocuments(filter);
-    // build sort object
-    const sortObj = {};
-    sortObj[sortBy] = sortOrder;
-    const phones = await Phone.find(filter)
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+
+    const pipeline = [
+      { $match: filter },
+      {
+        $addFields: {
+          reviewsCount: { $size: { $ifNull: ['$reviews', []] } },
+          averageRating: {
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ['$reviews', []] } }, 0] },
+              { $avg: '$reviews.rating' },
+              0
+            ]
+          }
+        }
+      },
+      { $sort: { [sortBy]: sortOrder } },
+      { $skip: skip },
+      { $limit: limitNum },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          brand: 1,
+          price: 1,
+          stock: 1,
+          isDisabled: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          averageRating: 1,
+          reviewsCount: 1
+        }
+      }
+    ];
+
+    const [phones, total] = await Promise.all([
+      Phone.aggregate(pipeline),
+      Phone.countDocuments(filter)
+    ]);
+
     res.json({ success: true, total, page: pageNum, limit: limitNum, phones });
   } catch (err) {
     console.error('adminUser.getUserPhones error:', err);
@@ -262,7 +304,7 @@ exports.getUserReviews = async (req, res) => {
     if (!user) {
       return res.json({ success: false, message: 'User not found' });
     }
-    // Parse pagination, sorting, filtering parameters
+
     const pageNum = parseInt(req.query.page, 10) || 1;
     const limitNum = parseInt(req.query.limit, 10) || 10;
     if (isNaN(pageNum) || pageNum < 1) {
@@ -271,35 +313,50 @@ exports.getUserReviews = async (req, res) => {
     if (isNaN(limitNum) || limitNum < 1) {
       return res.json({ success: false, message: 'Invalid limit number' });
     }
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-    const brandFilter = req.query.brand;
+
+    const allowedSortFields = ['rating', 'createdAt'];
+    const sortBy = allowedSortFields.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
+    if (req.query.sortBy && !allowedSortFields.includes(req.query.sortBy)) {
+      return res.json({ success: false, message: 'Invalid sortBy. Allowed: rating, createdAt' });
+    }
+    const sortOrder = req.query.sortOrder === 'asc'
+      ? 1
+      : req.query.sortOrder === 'desc' || !req.query.sortOrder
+        ? -1
+        : null;
+    if (sortOrder === null) {
+      return res.json({ success: false, message: 'Invalid sortOrder. Allowed: asc, desc' });
+    }
+
+    const brandFilter = req.query.brand && req.query.brand !== 'all' ? req.query.brand : null;
     const skip = (pageNum - 1) * limitNum;
     const objectUserId = new mongoose.Types.ObjectId(userId);
-    // Build match conditions
     const matchConditions = { 'reviews.reviewerId': objectUserId };
-    if (brandFilter && brandFilter !== 'all') {
+    if (brandFilter) {
       matchConditions.brand = brandFilter;
     }
-    // Aggregate pipeline
+
     const pipeline = [
       { $match: matchConditions },
-      { $addFields: {
-          reviewsCount: { $size: '$reviews' },
+      {
+        $addFields: {
+          reviewsCount: { $size: { $ifNull: ['$reviews', []] } },
           averageRating: {
-            $cond: [ { $gt: [ { $size: '$reviews' }, 0 ] }, { $avg: '$reviews.rating' }, 0 ]
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ['$reviews', []] } }, 0] },
+              { $avg: '$reviews.rating' },
+              0
+            ]
           }
         }
       },
       { $unwind: '$reviews' },
       { $match: { 'reviews.reviewerId': objectUserId } },
-      { $sort: sortBy === 'rating'
-          ? { 'reviews.rating': sortOrder }
-          : { 'reviews.createdAt': sortOrder }
-      },
+      { $sort: sortBy === 'rating' ? { 'reviews.rating': sortOrder } : { 'reviews.createdAt': sortOrder } },
       { $skip: skip },
       { $limit: limitNum },
-      { $project: {
+      {
+        $project: {
           _id: 0,
           reviewId: '$reviews._id',
           phoneId: '$_id',
@@ -316,10 +373,11 @@ exports.getUserReviews = async (req, res) => {
         }
       }
     ];
+
     const reviews = await Phone.aggregate(pipeline);
-    // Count total matching reviews
+
     const countMatch = { 'reviews.reviewerId': objectUserId };
-    if (brandFilter && brandFilter !== 'all') {
+    if (brandFilter) {
       countMatch.brand = brandFilter;
     }
     const countPipeline = [
@@ -330,9 +388,10 @@ exports.getUserReviews = async (req, res) => {
     ];
     const countResult = await Phone.aggregate(countPipeline);
     const total = countResult.length > 0 ? countResult[0].total : 0;
+
     res.json({ success: true, total, page: pageNum, limit: limitNum, reviews });
   } catch (err) {
     console.error('adminUser.getUserReviews error:', err);
     res.json({ success: false, message: 'Server error' });
   }
-}; 
+};

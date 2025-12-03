@@ -7,7 +7,22 @@ import { AdminService } from '../../services/admin.service';
 import { DataService } from '../../services/data.service';
 import { User } from '../../models/user.model';
 import { Phone } from '../../models/phone.model';
-import { Review } from '../../models/review.model';
+
+type AdminUserReview = {
+  reviewId: string;
+  phoneId: string;
+  phoneTitle: string;
+  phoneBrand: string;
+  phonePrice: number;
+  phoneStock: number;
+  averageRating: number;
+  reviewsCount: number;
+  reviewRating: number;
+  reviewComment: string;
+  reviewCreatedAt: string;
+  isHidden: boolean;
+  isExpanded?: boolean;
+};
 
 @Component({
   selector: 'app-admin-user-management',
@@ -35,8 +50,12 @@ export class AdminUserManagementComponent implements OnInit {
   // Modal flags and data
   showPhonesModal = false;
   showReviewsModal = false;
+  phonesLoading = false;
+  reviewsLoading = false;
+  phoneErrorMessage: string = '';
+  reviewErrorMessage: string = '';
   userPhones: Phone[] = [];
-  userReviews: any[] = [];
+  userReviews: AdminUserReview[] = [];
   // Review pagination properties
   reviewUserId: string = '';
   reviewCurrentPage: number = 1;
@@ -244,6 +263,10 @@ export class AdminUserManagementComponent implements OnInit {
     this.phoneSortBy = 'createdAt';
     this.phoneSortOrder = 'desc';
     this.phoneFilterBrand = 'all';
+    this.phoneErrorMessage = '';
+    this.userPhones = [];
+    this.phoneTotalItems = 0;
+    this.phoneTotalPages = 1;
     await this.loadUserPhones(1);
     this.showPhonesModal = true;
   }
@@ -256,11 +279,17 @@ export class AdminUserManagementComponent implements OnInit {
     this.reviewSortBy = 'createdAt';
     this.reviewSortOrder = 'desc';
     this.reviewFilterBrand = 'all';
+    this.reviewErrorMessage = '';
+    this.userReviews = [];
+    this.reviewTotalItems = 0;
+    this.reviewTotalPages = 1;
     await this.loadUserReviews(1);
     this.showReviewsModal = true;
   }
 
   private async loadUserReviews(page: number): Promise<void> {
+    this.reviewsLoading = true;
+    this.reviewErrorMessage = '';
     try {
       const response = await this.adminService.getUserReviews(
         this.reviewUserId,
@@ -271,15 +300,39 @@ export class AdminUserManagementComponent implements OnInit {
         this.reviewFilterBrand === 'all' ? undefined : this.reviewFilterBrand
       );
       if (response.success) {
-        // set up expansion flags for each review
-        this.userReviews = response.reviews.map((r: any) => ({ ...r, isExpanded: false }));
-        this.reviewTotalItems = response.total;
-        this.reviewTotalPages = Math.ceil(this.reviewTotalItems / this.reviewItemsPerPage);
+        const reviews = response.reviews ?? response.data?.reviews ?? [];
+        this.userReviews = reviews.map((r: any) => ({
+          reviewId: r.reviewId,
+          phoneId: r.phoneId,
+          phoneTitle: r.phoneTitle,
+          phoneBrand: r.phoneBrand,
+          phonePrice: r.phonePrice,
+          phoneStock: r.phoneStock,
+          averageRating: r.averageRating ?? 0,
+          reviewsCount: r.reviewsCount ?? 0,
+          reviewRating: r.reviewRating,
+          reviewComment: r.reviewComment ?? '',
+          reviewCreatedAt: r.reviewCreatedAt ?? r.createdAt,
+          isHidden: !!r.isHidden,
+          isExpanded: false,
+        }));
+        this.reviewTotalItems = response.total ?? response.data?.total ?? this.userReviews.length;
+        this.reviewTotalPages = Math.max(1, Math.ceil(this.reviewTotalItems / this.reviewItemsPerPage));
       } else {
-        this.data.error(response.message || 'Failed to load user reviews');
+        this.userReviews = [];
+        this.reviewTotalItems = 0;
+        this.reviewTotalPages = 1;
+        this.reviewErrorMessage = response.message || 'Failed to load user reviews';
+        this.data.error(this.reviewErrorMessage);
       }
     } catch (error: any) {
-      this.data.error(error.message || 'An error occurred while loading user reviews');
+      this.userReviews = [];
+      this.reviewTotalItems = 0;
+      this.reviewTotalPages = 1;
+      this.reviewErrorMessage = error.message || 'An error occurred while loading user reviews';
+      this.data.error(this.reviewErrorMessage);
+    } finally {
+      this.reviewsLoading = false;
     }
   }
 
@@ -320,6 +373,8 @@ export class AdminUserManagementComponent implements OnInit {
 
   // THIRD_EDIT: add methods to handle loading, paging, sorting, filtering for user phones
   private async loadUserPhones(page: number): Promise<void> {
+    this.phonesLoading = true;
+    this.phoneErrorMessage = '';
     try {
       const response = await this.adminService.getUserPhones(
         this.phoneUserId,
@@ -330,14 +385,35 @@ export class AdminUserManagementComponent implements OnInit {
         this.phoneFilterBrand === 'all' ? undefined : this.phoneFilterBrand
       );
       if (response.success) {
-        this.userPhones = response.phones;
-        this.phoneTotalItems = response.total;
-        this.phoneTotalPages = Math.ceil(this.phoneTotalItems / this.phoneItemsPerPage);
+        const phones = response.phones ?? response.data?.phones ?? [];
+        this.userPhones = phones.map((p: any) => ({
+          id: p._id ?? p.id ?? '',
+          title: p.title,
+          brand: p.brand,
+          price: p.price,
+          stock: p.stock,
+          isDisabled: p.isDisabled,
+          averageRating: p.averageRating ?? 0,
+          reviewsCount: p.reviewsCount ?? (Array.isArray(p.reviews) ? p.reviews.length : 0),
+          reviews: [],
+        }));
+        this.phoneTotalItems = response.total ?? response.data?.total ?? this.userPhones.length;
+        this.phoneTotalPages = Math.max(1, Math.ceil(this.phoneTotalItems / this.phoneItemsPerPage));
       } else {
-        this.data.error(response.message || 'Failed to load user phones');
+        this.userPhones = [];
+        this.phoneTotalItems = 0;
+        this.phoneTotalPages = 1;
+        this.phoneErrorMessage = response.message || 'Failed to load user phones';
+        this.data.error(this.phoneErrorMessage);
       }
     } catch (error: any) {
-      this.data.error(error.message || 'An error occurred while loading user phones');
+      this.userPhones = [];
+      this.phoneTotalItems = 0;
+      this.phoneTotalPages = 1;
+      this.phoneErrorMessage = error.message || 'An error occurred while loading user phones';
+      this.data.error(this.phoneErrorMessage);
+    } finally {
+      this.phonesLoading = false;
     }
   }
 
@@ -390,4 +466,4 @@ export class AdminUserManagementComponent implements OnInit {
     this.reviewCurrentPage = 1;
     this.loadUserReviews(1);
   }
-} 
+}

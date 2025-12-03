@@ -157,6 +157,46 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
     }
 
+    /**
+     * 获取指定用户的在售手机
+     * GET /api/admin/users/{userId}/phones?page=1&limit=10&sortBy=createdAt&sortOrder=desc&brand=Apple
+     */
+    @GetMapping("/users/{userId}/phones")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<AdminUserPhoneResponse>>> getUserPhones(
+            @PathVariable String userId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "limit", defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder,
+            @RequestParam(required = false) String brand) {
+        if (page < 1 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+        PageResponse<AdminUserPhoneResponse> response = adminService.getUserPhones(userId, page - 1, pageSize, sortBy, sortOrder, brand);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 获取指定用户提交的评论
+     * GET /api/admin/users/{userId}/reviews?page=1&limit=10&sortBy=createdAt&sortOrder=desc&brand=Samsung
+     */
+    @GetMapping("/users/{userId}/reviews")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<AdminUserReviewResponse>>> getUserReviews(
+            @PathVariable String userId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "limit", defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder,
+            @RequestParam(required = false) String brand) {
+        if (page < 1 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+        PageResponse<AdminUserReviewResponse> response = adminService.getUserReviews(userId, page - 1, pageSize, sortBy, sortOrder, brand);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // ============================================
     // 商品管理
     // ============================================

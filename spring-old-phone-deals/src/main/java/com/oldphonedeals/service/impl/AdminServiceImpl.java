@@ -9,6 +9,7 @@ import com.oldphonedeals.dto.response.auth.LoginResponse;
 import com.oldphonedeals.dto.response.order.OrderItemResponse;
 import com.oldphonedeals.entity.*;
 import com.oldphonedeals.enums.AdminAction;
+import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.enums.TargetType;
 import com.oldphonedeals.exception.ForbiddenException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
@@ -377,6 +378,104 @@ public class AdminServiceImpl implements AdminService {
         log.info("User {} deleted by admin {} with all associated data", userId, adminId);
     }
 
+    @Override
+    public PageResponse<AdminUserPhoneResponse> getUserPhones(String userId, int page, int pageSize, String sortBy, String sortOrder, String brand) {
+        userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        int safePage = Math.max(page, 0);
+        int safePageSize = pageSize > 0 ? pageSize : 10;
+        PhoneBrand brandFilter = parseBrandFilter(brand);
+
+        List<Phone> sellerPhones = phoneRepository.findBySellerId(userId);
+        List<Phone> filtered = sellerPhones.stream()
+            .filter(phone -> brandFilter == null || brandFilter.equals(phone.getBrand()))
+            .sorted(buildUserPhoneComparator(sortBy, sortOrder))
+            .collect(Collectors.toList());
+
+        int start = safePage * safePageSize;
+        int end = Math.min(start + safePageSize, filtered.size());
+        List<AdminUserPhoneResponse> pageContent = start < filtered.size()
+            ? filtered.subList(start, end).stream()
+                .map(this::convertToAdminUserPhoneResponse)
+                .collect(Collectors.toList())
+            : new ArrayList<>();
+
+        int totalPages = safePageSize > 0 ? (int) Math.ceil((double) filtered.size() / safePageSize) : 0;
+
+        return PageResponse.<AdminUserPhoneResponse>builder()
+            .content(pageContent)
+            .currentPage(safePage + 1)
+            .totalPages(totalPages)
+            .totalItems((long) filtered.size())
+            .itemsPerPage(safePageSize)
+            .hasNext(safePage + 1 < totalPages)
+            .hasPrevious(safePage > 0)
+            .build();
+    }
+
+    @Override
+    public PageResponse<AdminUserReviewResponse> getUserReviews(String userId, int page, int pageSize, String sortBy, String sortOrder, String brand) {
+        userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        int safePage = Math.max(page, 0);
+        int safePageSize = pageSize > 0 ? pageSize : 10;
+        PhoneBrand brandFilter = parseBrandFilter(brand);
+
+        List<Phone> phones = phoneRepository.findAll();
+        List<AdminUserReviewResponse> reviews = new ArrayList<>();
+        for (Phone phone : phones) {
+            if (brandFilter != null && phone.getBrand() != null && !brandFilter.equals(phone.getBrand())) {
+                continue;
+            }
+            if (phone.getReviews() == null) {
+                continue;
+            }
+            int reviewsCount = phone.getReviews().size();
+            double averageRating = phone.getAverageRating() != null ? phone.getAverageRating() : 0.0;
+            for (Phone.Review review : phone.getReviews()) {
+                if (!userId.equals(review.getReviewerId())) {
+                    continue;
+                }
+                reviews.add(AdminUserReviewResponse.builder()
+                    .reviewId(review.getId())
+                    .phoneId(phone.getId())
+                    .phoneTitle(phone.getTitle())
+                    .phoneBrand(phone.getBrand() != null ? phone.getBrand().getDisplayName() : null)
+                    .phonePrice(phone.getPrice())
+                    .phoneStock(phone.getStock())
+                    .averageRating(averageRating)
+                    .reviewsCount(reviewsCount)
+                    .reviewRating(review.getRating())
+                    .reviewComment(review.getComment())
+                    .reviewCreatedAt(review.getCreatedAt())
+                    .isHidden(review.getIsHidden() != null ? review.getIsHidden() : Boolean.FALSE)
+                    .build());
+            }
+        }
+
+        reviews.sort(buildAdminReviewComparator(sortBy, sortOrder));
+
+        int start = safePage * safePageSize;
+        int end = Math.min(start + safePageSize, reviews.size());
+        List<AdminUserReviewResponse> pageContent = start < reviews.size()
+            ? reviews.subList(start, end)
+            : new ArrayList<>();
+
+        int totalPages = safePageSize > 0 ? (int) Math.ceil((double) reviews.size() / safePageSize) : 0;
+
+        return PageResponse.<AdminUserReviewResponse>builder()
+            .content(pageContent)
+            .currentPage(safePage + 1)
+            .totalPages(totalPages)
+            .totalItems((long) reviews.size())
+            .itemsPerPage(safePageSize)
+            .hasNext(safePage + 1 < totalPages)
+            .hasPrevious(safePage > 0)
+            .build();
+    }
+
     // ============================================
     // 商品管理模块
     // ============================================
@@ -736,7 +835,6 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public SalesStatsResponse getSalesStats() {
         log.info("Fetching sales statistics");
-
         List<Order> allOrders = orderRepository.findAll();
 
         long totalTransactions = allOrders.size();
@@ -987,6 +1085,69 @@ public class AdminServiceImpl implements AdminService {
     // ============================================
     // 辅助方法 - DTO转换
     // ============================================
+    private PhoneBrand parseBrandFilter(String brand) {
+        if (brand == null || brand.isBlank() || "all".equalsIgnoreCase(brand)) {
+            return null;
+        }
+        for (PhoneBrand value : PhoneBrand.values()) {
+            if (value.name().equalsIgnoreCase(brand) || value.getDisplayName().equalsIgnoreCase(brand)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private Comparator<Phone> buildUserPhoneComparator(String sortBy, String sortOrder) {
+        String sortField = (sortBy != null && !sortBy.isBlank()) ? sortBy.trim() : DEFAULT_SORT_FIELD;
+        Comparator<Phone> comparator;
+        switch (sortField) {
+            case "price":
+                comparator = Comparator.comparing(phone -> phone.getPrice() != null ? phone.getPrice() : 0.0);
+                break;
+            case "stock":
+                comparator = Comparator.comparing(phone -> phone.getStock() != null ? phone.getStock() : 0);
+                break;
+            default:
+                comparator = Comparator.comparing(phone -> phone.getCreatedAt() != null ? phone.getCreatedAt() : LocalDateTime.MIN);
+        }
+        boolean ascending = "asc".equalsIgnoreCase(sortOrder);
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+        return comparator;
+    }
+
+    private Comparator<AdminUserReviewResponse> buildAdminReviewComparator(String sortBy, String sortOrder) {
+        String sortField = (sortBy != null && !sortBy.isBlank()) ? sortBy.trim() : "createdAt";
+        Comparator<AdminUserReviewResponse> comparator;
+        if ("rating".equalsIgnoreCase(sortField)) {
+            comparator = Comparator.comparing(review -> review.getReviewRating() != null ? review.getReviewRating() : 0);
+        } else {
+            comparator = Comparator.comparing(review -> review.getReviewCreatedAt() != null ? review.getReviewCreatedAt() : LocalDateTime.MIN);
+        }
+        boolean ascending = "asc".equalsIgnoreCase(sortOrder);
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+        return comparator;
+    }
+
+    private AdminUserPhoneResponse convertToAdminUserPhoneResponse(Phone phone) {
+        int reviewsCount = phone.getReviews() != null ? phone.getReviews().size() : 0;
+        double averageRating = phone.getAverageRating() != null ? phone.getAverageRating() : 0.0;
+        return AdminUserPhoneResponse.builder()
+                .id(phone.getId())
+                .title(phone.getTitle())
+                .brand(phone.getBrand() != null ? phone.getBrand().getDisplayName() : null)
+                .price(phone.getPrice())
+                .stock(phone.getStock())
+                .isDisabled(phone.getIsDisabled())
+                .averageRating(averageRating)
+                .reviewsCount(reviewsCount)
+                .createdAt(phone.getCreatedAt())
+                .updatedAt(phone.getUpdatedAt())
+                .build();
+    }
 
     private UserManagementResponse convertToUserManagementResponse(User user) {
         return UserManagementResponse.builder()
@@ -1049,8 +1210,8 @@ public class AdminServiceImpl implements AdminService {
         // 生成地址摘要
         String addressSummary = "";
         if (order.getAddress() != null) {
-            addressSummary = order.getAddress().getCity() + ", " + 
-                           order.getAddress().getState() + ", " + 
+            addressSummary = order.getAddress().getCity() + ", " +
+                           order.getAddress().getState() + ", " +
                            order.getAddress().getCountry();
         }
 

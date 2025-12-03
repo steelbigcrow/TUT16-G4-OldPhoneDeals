@@ -110,6 +110,16 @@ public interface AdminService {
      */
     void deleteUser(String userId, String adminId);
 
+    /**
+     * 获取指定用户的在售手机（分页、排序、品牌过滤）
+     */
+    PageResponse<AdminUserPhoneResponse> getUserPhones(String userId, int page, int pageSize, String sortBy, String sortOrder, String brand);
+
+    /**
+     * 获取指定用户提交的评论（分页、排序、品牌过滤）
+     */
+    PageResponse<AdminUserReviewResponse> getUserReviews(String userId, int page, int pageSize, String sortBy, String sortOrder, String brand);
+
     // ============================================
     // 商品管理模块
     // ============================================

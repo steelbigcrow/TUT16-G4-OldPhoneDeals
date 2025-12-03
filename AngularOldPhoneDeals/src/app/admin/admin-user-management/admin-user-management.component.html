@@ -139,6 +139,12 @@
             <option *ngFor="let b of brands" [value]="b">{{ b }}</option>
           </select>
         </div>
+        <div *ngIf="phonesLoading" class="d-flex justify-content-center my-3">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <div *ngIf="phoneErrorMessage" class="alert alert-danger">{{ phoneErrorMessage }}</div>
         <table class="table table-striped">
           <thead>
             <tr>
@@ -156,8 +162,11 @@
               <td>{{ phone.brand }}</td>
               <td>{{ phone.price | currency }}</td>
               <td>{{ phone.stock }}</td>
-              <td>{{ phone.averageRating ? (phone.averageRating | number:'1.1-2') : 'No ratings' }}</td>
-              <td>{{ phone.reviews.length || 0 }}</td>
+              <td>{{ phone.averageRating !== undefined ? (phone.averageRating | number:'1.1-2') : 'No ratings' }}</td>
+              <td>{{ phone.reviewsCount ?? (phone.reviews?.length || 0) }}</td>
+            </tr>
+            <tr *ngIf="!phonesLoading && !phoneErrorMessage && userPhones.length === 0">
+              <td colspan="6" class="text-center text-muted">No phones found.</td>
             </tr>
           </tbody>
         </table>
@@ -195,17 +204,27 @@
             <option *ngFor="let b of reviewBrands" [value]="b">{{ b }}</option>
           </select>
         </div>
+        <div *ngIf="reviewsLoading" class="d-flex justify-content-center my-3">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <div *ngIf="reviewErrorMessage" class="alert alert-danger">{{ reviewErrorMessage }}</div>
         <div *ngFor="let rev of userReviews" class="mb-4 border rounded p-3">
           <!-- First layer: phone info -->
           <div class="row mb-2">
-            <div class="col-md-3"><strong>{{ rev.phoneTitle }}</strong></div>
+            <div class="col-md-3">
+              <strong>{{ rev.phoneTitle }}</strong>
+              <span *ngIf="rev.isHidden" class="badge bg-warning text-dark ms-2">Hidden</span>
+            </div>
             <div class="col-md-3">Brand: {{ rev.phoneBrand }}</div>
             <div class="col-md-3">Avg Rating: {{ rev.averageRating | number:'1.1-2' }}</div>
             <div class="col-md-3">Price: {{ rev.phonePrice | currency }}</div>
           </div>
           <!-- User's own rating -->
           <div class="row mb-2">
-            <div class="col"><strong>Your Rating:</strong> {{ rev.reviewRating }}</div>
+            <div class="col-md-6"><strong>Your Rating:</strong> {{ rev.reviewRating }}</div>
+            <div class="col-md-6">Reviews: {{ rev.reviewsCount ?? 0 }}</div>
           </div>
           <!-- Second layer: review text and date -->
           <div class="row">
@@ -226,6 +245,7 @@
             </div>
           </div>
         </div>
+        <div *ngIf="!reviewsLoading && !reviewErrorMessage && userReviews.length === 0" class="text-center text-muted">No reviews found.</div>
         <div class="d-flex justify-content-center mt-3">
           <app-pagination
             [currentPage]="reviewCurrentPage"
@@ -239,4 +259,4 @@
       </div>
     </div>
   </div>
-</div> 
+</div>
