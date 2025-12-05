@@ -19,14 +19,14 @@
 | **UI 组件** | Headless UI | Tailwind Labs 官方出品，完美集成 |
 | **构建工具** | Vite | 快速开发服务器和构建 |
 
-**项目位置**: `TUT16-G4-OldPhoneDeals/react-frontend/` (Monorepo 内部)
+**项目位置**: `TUT16-G4-OldPhoneDeals/node-frontend/` (Monorepo 内部)
 
 ---
 
 ## 二、目录结构规划
 
 ```
-react-frontend/
+node-frontend/
 ├── src/
 │   ├── main.tsx                    # 应用入口
 │   ├── App.tsx                     # 根组件和路由配置
