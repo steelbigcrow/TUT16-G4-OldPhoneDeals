@@ -1,5 +1,6 @@
 package com.oldphonedeals.dto.request.profile;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -30,4 +31,14 @@ public class UpdateProfileRequest {
     @NotBlank(message = "Last name is required")
     @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
     private String lastName;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email must be a valid email address")
+    private String email;
+
+    /**
+     * Current password is optional for name-only updates, but required when changing email.
+     * Validation is handled in the service layer.
+     */
+    private String currentPassword;
 }

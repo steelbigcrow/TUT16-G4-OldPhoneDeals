@@ -5,6 +5,7 @@ import com.oldphonedeals.dto.request.profile.UpdateProfileRequest;
 import com.oldphonedeals.dto.response.user.UserProfileResponse;
 import com.oldphonedeals.entity.User;
 import com.oldphonedeals.exception.BadRequestException;
+import com.oldphonedeals.exception.DuplicateResourceException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
 import com.oldphonedeals.repository.UserRepository;
@@ -19,149 +20,156 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 用户个人资料服务实现类
- * <p>
- * 实现用户个人资料管理的业务逻辑，包括资料查看、更新和密码修改。
- * 所有操作都需要进行权限检查，确保用户只能操作自己的资料。
- * </p>
- * 
- * @author OldPhoneDeals Team
+ * Service implementation for user profile operations.
+ * Mirrors the legacy Express.js behaviour while following Spring best practices.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProfileServiceImpl implements ProfileService {
-    
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    
+
     /**
-     * 获取用户资料
-     * <p>
-     * 返回用户的基本信息，过滤敏感字段。
-     * </p>
-     * 
-     * @param userId 用户ID
-     * @return 用户资料响应
-     * @throws ResourceNotFoundException 如果用户不存在
+     * Retrieve a user's profile by id.
+     *
+     * @param userId user id
+     * @return user profile response
      */
     @Override
     public UserProfileResponse getUserProfile(String userId) {
         log.info("Getting user profile for user ID: {}", userId);
-        
-        // 查找用户
+
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // 构建并返回用户资料（不包含敏感字段）
+
         return buildUserProfileResponse(user);
     }
-    
+
     /**
-     * 更新用户资料
-     * <p>
-     * 仅允许更新firstName和lastName。
-     * 权限检查：只能更新自己的资料。
-     * </p>
-     * 
-     * @param userId 用户ID
-     * @param request 更新资料请求
-     * @return 更新后的用户资料
-     * @throws ResourceNotFoundException 如果用户不存在
-     * @throws UnauthorizedException 如果无权限修改
+     * Update the current user's profile.
+     * Supports name-only updates without password, and email changes that require the
+     * current password plus email uniqueness checks.
+     *
+     * @param userId  user id (must match the authenticated user)
+     * @param request profile update request
+     * @return updated profile
      */
     @Override
     @Transactional
     public UserProfileResponse updateUserProfile(String userId, UpdateProfileRequest request) {
         log.info("Updating profile for user ID: {}", userId);
-        
-        // 权限检查：只能更新自己的资料
+
+        // Permission check: can only update own profile
         String currentUserId = SecurityContextHelper.getCurrentUserId();
         if (!userId.equals(currentUserId)) {
-            log.warn("Unauthorized profile update attempt. Current user: {}, Target user: {}", 
-                currentUserId, userId);
+            log.warn(
+                "Unauthorized profile update attempt. Current user: {}, Target user: {}",
+                currentUserId,
+                userId
+            );
             throw new UnauthorizedException("You can only update your own profile");
         }
-        
-        // 查找用户
+
+        // Load user
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // 更新允许的字段
+
+        // Always allow updating names
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+
+        // Handle optional email change
+        String requestedEmail = request.getEmail();
+        boolean hasEmail = requestedEmail != null && !requestedEmail.isBlank();
+        boolean emailChanged = hasEmail && !requestedEmail.equalsIgnoreCase(user.getEmail());
+
+        if (emailChanged) {
+            // Require current password when changing email
+            String currentPassword = request.getCurrentPassword();
+            if (currentPassword == null || currentPassword.isBlank()) {
+                log.warn("Email change requested without current password for user: {}", user.getEmail());
+                throw new BadRequestException("Current password is required to change email");
+            }
+
+            // Verify current password
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                log.warn(
+                    "Current password incorrect for user during email change: {}",
+                    user.getEmail()
+                );
+                throw new BadRequestException("Current password is incorrect");
+            }
+
+            // Enforce email uniqueness (allow keeping the same email)
+            if (userRepository.existsByEmail(requestedEmail)
+                && !requestedEmail.equalsIgnoreCase(user.getEmail())) {
+                log.warn("Email update failed - email already exists: {}", requestedEmail);
+                throw new DuplicateResourceException("Account with that email already exists");
+            }
+
+            user.setEmail(requestedEmail);
+        }
+
         user.setUpdatedAt(LocalDateTime.now());
-        
-        // 保存更新
         user = userRepository.save(user);
-        
+
         log.info("Profile updated successfully for user: {}", user.getEmail());
-        
-        // 返回更新后的资料
+
         return buildUserProfileResponse(user);
     }
-    
+
     /**
-     * 修改密码
-     * <p>
-     * 需要验证当前密码后才能设置新密码。
-     * 权限检查：只能修改自己的密码。
-     * </p>
-     * 
-     * @param userId 用户ID
-     * @param request 修改密码请求
-     * @throws ResourceNotFoundException 如果用户不存在
-     * @throws UnauthorizedException 如果无权限修改
-     * @throws BadRequestException 如果当前密码错误或新密码不符合要求
+     * Change the current user's password.
+     * Requires the correct current password and enforces a minimum length.
+     *
+     * @param userId  user id
+     * @param request password change request
      */
     @Override
     @Transactional
     public void changePassword(String userId, ChangePasswordRequest request) {
         log.info("Changing password for user ID: {}", userId);
-        
-        // 权限检查：只能修改自己的密码
+
+        // Permission check: can only change own password
         String currentUserId = SecurityContextHelper.getCurrentUserId();
         if (!userId.equals(currentUserId)) {
-            log.warn("Unauthorized password change attempt. Current user: {}, Target user: {}", 
-                currentUserId, userId);
+            log.warn(
+                "Unauthorized password change attempt. Current user: {}, Target user: {}",
+                currentUserId,
+                userId
+            );
             throw new UnauthorizedException("You can only change your own password");
         }
-        
-        // 查找用户
+
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // 验证当前密码
+
+        // Verify current password
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             log.warn("Current password incorrect for user: {}", user.getEmail());
             throw new BadRequestException("Current password is incorrect");
         }
-        
-        // 验证新密码长度（至少6位）
+
+        // Enforce minimum new password length (at least 6 characters)
         if (request.getNewPassword().length() < 6) {
             throw new BadRequestException("New password must be at least 6 characters");
         }
-        
-        // 更新密码
+
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setUpdatedAt(LocalDateTime.now());
-        
-        // 保存更新
+
         userRepository.save(user);
-        
+
         log.info("Password changed successfully for user: {}", user.getEmail());
-        
-        // 注意：修改密码后不会使当前JWT失效（与Express.js实现一致）
+
+        // Note: changing password does not invalidate the current JWT,
+        // matching the legacy Express.js implementation.
     }
-    
+
     /**
-     * 构建用户资料响应对象
-     * <p>
-     * 过滤敏感字段，仅返回安全的用户信息。
-     * </p>
-     *
-     * @param user 用户实体
-     * @return 用户资料响应DTO
+     * Build a safe profile response DTO from the User entity.
      */
     private UserProfileResponse buildUserProfileResponse(User user) {
         return UserProfileResponse.builder()
@@ -175,3 +183,4 @@ public class ProfileServiceImpl implements ProfileService {
             .build();
     }
 }
+
