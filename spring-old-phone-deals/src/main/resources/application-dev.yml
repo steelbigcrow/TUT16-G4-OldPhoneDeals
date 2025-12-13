@@ -1,27 +1,27 @@
 spring:
-  # 开发环境 MongoDB（可以使用内嵌或本地）
+  # 开发环境 MongoDB（可使用单独的 dev 库）
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/oldphonedeals-dev}
   
-  # 开发环境禁用邮件（或使用假邮件服务）
+  # 开发环境邮件（通常使用沙箱服务）
   mail:
     host: ${MAIL_HOST:smtp.mailtrap.io}
     port: ${MAIL_PORT:2525}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
 
-# 开发环境服务器配置
+# 开发环境服务器
 server:
-  port: 3000
+  port: 8080
   error:
-    include-stacktrace: on-param  # 开发环境可以查看堆栈
+    include-stacktrace: on-param  # 仅在请求参数中显式开启堆栈
 
-# JWT 开发密钥（不要在生产使用）
+# JWT 开发环境默认密钥（请勿用于生产）
 jwt:
   secret: ${JWT_SECRET:dev-secret-key-please-change-in-production-at-least-256-bits-long}
 
-# 开发环境日志（更详细）
+# 日志（开发环境更详细）
 logging:
   level:
     root: INFO
@@ -32,11 +32,11 @@ logging:
   file:
     name: logs/dev-application.log
 
-# 前端开发服务器
+# 前端本地开发地址（用于 CORS）
 frontend:
-  url: http://localhost:3000
+  url: http://localhost:5173
 
-# 文件上传（开发环境）
+# 开发环境文件上传目录
 file:
   upload:
     dir: ./dev-uploads/images

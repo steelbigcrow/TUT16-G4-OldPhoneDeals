@@ -8,10 +8,10 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/oldphonedeals}
-      # 启用审计（自动填充 createdAt 和 updatedAt）
+      # 自动创建索引（用于 createdAt / updatedAt）
       auto-index-creation: true
   
-  # 邮件配置（SendGrid SMTP）
+  # 邮件服务(SendGrid SMTP)
   mail:
     host: smtp.sendgrid.net
     port: 587
@@ -24,7 +24,7 @@ spring:
           starttls:
             enable: true
             required: true
-    # 发件人地址
+    # 默认发件人
     from: ${FROM_EMAIL:noreply@oldphonedeals.com}
   
   # 文件上传配置
@@ -37,24 +37,24 @@ spring:
 
 # 服务器配置
 server:
-  port: ${PORT:3000}
-  # 错误处理
+  port: ${PORT:8080}
+  # 错误信息输出
   error:
     include-message: always
     include-binding-errors: always
-    include-stacktrace: never  # 生产环境不暴露堆栈
+    include-stacktrace: never  # 默认不返回堆栈
     include-exception: false
 
 # JWT 配置
 jwt:
-  secret: ${JWT_SECRET:}  # 必须通过环境变量设置
-  expiration: 604800000  # 7 天（毫秒）
+  secret: ${JWT_SECRET:}  # 必须在环境变量中配置
+  expiration: 604800000  # 7 天(毫秒)
 
-# 前端 URL
+# 前端 URL（用于 CORS）
 frontend:
-  url: ${FRONTEND_URL:http://localhost:3000}
+  url: ${FRONTEND_URL:http://localhost:5173}
 
-# 文件上传路径
+# 文件存储
 file:
   upload:
     dir: ${UPLOAD_DIR:./uploads/images}
@@ -73,7 +73,7 @@ logging:
   file:
     name: logs/application.log
 
-# Actuator 端点（可选，用于健康检查）
+# Actuator 配置(可按需开启)
 management:
   endpoints:
     web:
