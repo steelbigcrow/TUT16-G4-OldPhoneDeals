@@ -1,461 +1,427 @@
-# Node Frontend Plan - React + TypeScript + Tailwind CSS
+# React Frontend Plan - React + TypeScript + Tailwind CSS
 
 ## 目标
-使用 React + TypeScript + Tailwind 为 OldPhoneDeals 新增一套前端（node-frontend），专门对接 Spring Boot REST API（默认 `http://localhost:8080/api`）。现有 Angular + Node/Express 前端/后端保持不变，继续服务当前功能，并与 React 版本在一段时间内并行存在。
+
+为 OldPhoneDeals 增加一套 **React 纯前端 SPA（Vite）**，对接本仓库已存在的 **Spring Boot REST API**（位于 [`spring-old-phone-deals/`](spring-old-phone-deals/README.md:1)）。
+
+**仓库目录命名约定（已定稿）**：
+- React 前端工程目录为 [`react-frontend/`](react-frontend/:1)（由历史目录 `node-frontend/` 真实改名而来）。
+- 该前端是 **SPA（Vite 构建）**：**非 SSR / 非 Node 服务端**。目录名 `react-frontend` 仅表示“前端工程”，不代表后端技术栈。
 
 ---
 
-## 一、技术栈选择
+## 一、技术栈选择（最佳实践 + 可执行）
 
 | 类别 | 技术选型 | 说明 |
 |------|----------|------|
-| **框架** | React 18+ | 组件化开发，生态成熟 |
-| **语言** | TypeScript | 类型安全，与后端 DTO 对齐 |
-| **样式** | Tailwind CSS | 原子化 CSS，快速开发 |
-| **路由** | React Router v6 | 声明式路由，支持嵌套和守卫 |
-| **状态管理** | Context API | React 原生方案，无额外依赖 |
-| **HTTP 客户端** | Axios + TanStack Query | 请求缓存、重试、状态管理 |
-| **表单处理** | React Hook Form + Zod | 表单验证和类型安全 |
-| **UI 组件** | Headless UI | Tailwind Labs 官方出品，完美集成 |
-| **构建工具** | Vite | 快速开发服务器和构建 |
-
-**目录结构**: React 前端位于 `TUT16-G4-OldPhoneDeals/node-frontend/`（与 Angular、Node、Spring Boot 共用一个 monorepo）。
-**后端对接**: 本 React 前端只调用 Spring Boot REST API；现有 Angular 应用继续使用 Node/Express API（`http://localhost:3000/api`，通过 `AngularOldPhoneDeals/proxy.conf.json` 代理）。
+| 框架 | React 18+ | 组件化开发 |
+| 语言 | TypeScript | 与后端 DTO/响应契约对齐 |
+| 样式 | Tailwind CSS | 快速开发与一致性 |
+| 路由 | React Router v6 | 嵌套路由 + 守卫（element + Outlet） |
+| 服务端状态 | Axios + TanStack Query | **所有服务端状态统一交给 Query** |
+| UI 状态 | Toast/Modal 等 UI Context（可选） | Context 仅保留纯 UI，不承担业务/服务端状态 |
+| 表单 | React Hook Form + Zod | 表单与验证 |
+| 构建 | Vite | dev proxy 与快速构建 |
 
 ---
 
-## 二、目录结构规划
+## 二、目录结构规划（react-frontend）
 
-```
-node-frontend/
+> 下面是可执行的推荐结构；允许小幅调整，但“服务端状态由 TanStack Query 管理”的原则不可变。
+
+```text
+react-frontend/
 ├── src/
-│   ├── main.tsx                    # 入口
-│   ├── App.tsx                     # 应用根组件
+│   ├── main.tsx
+│   ├── App.tsx
 │   │
-│   ├── types/                      # TypeScript 类型定义
+│   ├── types/
+│   │   ├── api.ts                  # ApiResponse / Page / 例外响应结构
 │   │   ├── user.ts
 │   │   ├── phone.ts
-│   │   ├── cart.ts
 │   │   ├── order.ts
-│   │   ├── review.ts
-│   │   └── api.ts                    # API 请求/响应 DTO
+│   │   └── review.ts
 │   │
-│   ├── api/                        # API 封装
-│   │   ├── client.ts                 # Axios 实例
-│   │   ├── auth.ts                   # 认证相关 API
-│   │   ├── phones.ts                 # 手机相关 API
-│   │   ├── cart.ts                   # 购物车 API
-│   │   ├── orders.ts                 # 订单 API
-│   │   ├── profile.ts                # 用户资料 API
-│   │   ├── wishlist.ts               # 心愿单 API
-│   │   └── admin.ts                  # 管理端 API
+│   ├── api/
+│   │   ├── client.ts               # axios 实例 + token 策略 + 错误拦截
+│   │   ├── auth.ts
+│   │   ├── phones.ts
+│   │   ├── orders.ts
+│   │   ├── profile.ts
+│   │   ├── wishlist.ts
+│   │   └── admin.ts
 │   │
-│   ├── hooks/                      # 业务 Hooks
-│   │   ├── useAuth.ts                # 认证状态与操作
-│   │   ├── useCart.ts                # 购物车状态
-│   │   ├── usePhones.ts              # 手机列表/搜索
-│   │   └── useNotification.ts        # 全局通知
+│   ├── hooks/
+│   │   ├── useAuth.ts              # /api/auth/me
+│   │   ├── useAdminAuth.ts         # /api/admin/profile
+│   │   └── ...                     # 其他 Query hooks（phones/cart/orders/admin...）
 │   │
-│   ├── contexts/                   # React Context 定义
-│   │   ├── AuthContext.tsx
-│   │   ├── CartContext.tsx
+│   ├── contexts/                   # 仅 UI Context（可选）
 │   │   └── NotificationContext.tsx
 │   │
-│   ├── components/                 # 可复用组件
+│   ├── components/
 │   │   ├── layout/
-│   │   │   ├── Header.tsx
-│   │   │   ├── AdminHeader.tsx
-│   │   │   ├── Footer.tsx
-│   │   │   └── Layout.tsx
 │   │   ├── ui/
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   ├── Pagination.tsx
-│   │   │   └── Loading.tsx
-│   │   ├── phone/
-│   │   │   ├── PhoneCard.tsx
-│   │   │   ├── PhoneForm.tsx
-│   │   │   └── PhoneGrid.tsx
-│   │   ├── review/
-│   │   │   └── ReviewItem.tsx
 │   │   └── common/
-│   │       ├── Notification.tsx
-│   │       ├── ConfirmDialog.tsx
-│   │       └── ProtectedRoute.tsx
+│   │       ├── ProtectedRoute.tsx  # v6 守卫（含 loading 决策）
+│   │       └── ErrorBoundary.tsx
 │   │
-│   ├── pages/                      # 页面组件
+│   ├── pages/
 │   │   ├── auth/
-│   │   │   ├── LoginPage.tsx
-│   │   │   ├── RegisterPage.tsx
-│   │   │   ├── VerifyEmailPage.tsx
-│   │   │   └── ResetPasswordPage.tsx
 │   │   ├── user/
-│   │   │   ├── HomePage.tsx
-│   │   │   ├── SearchPage.tsx
-│   │   │   ├── PhoneDetailPage.tsx
-│   │   │   ├── CheckoutPage.tsx
-│   │   │   └── WishlistPage.tsx
 │   │   ├── profile/
-│   │   │   ├── ProfilePage.tsx
-│   │   │   ├── EditProfilePage.tsx
-│   │   │   ├── ChangePasswordPage.tsx
-│   │   │   ├── ManageListingsPage.tsx
-│   │   │   └── SellerReviewsPage.tsx
 │   │   └── admin/
-│   │       ├── DashboardPage.tsx
-│   │       ├── UserManagementPage.tsx
-│   │       ├── ListingManagementPage.tsx
-│   │       ├── ReviewManagementPage.tsx
-│   │       └── SalesLogsPage.tsx
 │   │
-│   ├── utils/                      # 工具函数
-│   │   ├── storage.ts
-│   │   ├── format.ts
-│   │   └── validators.ts
-│   │
-│   └── styles/                     # 全局样式
-│       └── index.css                 # Tailwind 入口
+│   └── styles/
+│       └── index.css
 │
-├── public/                         # 静态资源
+├── public/
 ├── index.html
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
 ├── vite.config.ts
 └── .env.example
 ```
 
 ---
 
-## 三、功能模块映射
+## 三、Axios 统一路径规则（消除 /api/api 风险：唯一方案）
 
-### 3.1 认证模块
+**唯一允许方案（定稿）**：
 
-| Angular 原有功能 | React 实现方案 |
-|-----------------|---------------|
-| LoginComponent | LoginPage + useAuth hook |
-| RegisterComponent | RegisterPage + React Hook Form |
-| VerifyEmailComponent | VerifyEmailPage |
-| ResetPasswordComponent | ResetPasswordPage |
-| AuthGuardService | ProtectedRoute HOC |
-| AdminGuardService | AdminRoute HOC |
+1) `axios.baseURL` 固定为 `'/api'`  
+2) 所有 `config.url` **必须**使用以下形式之一（必须以 `/` 开头，且**禁止**再写 `/api` 前缀）：
+- 用户侧：`'/auth/...'`、`'/phones/...'`、`'/orders/...'`、`'/profile/...'`、`'/wishlist/...'`、`'/upload/...'`
+- 管理侧：`'/admin/...'`
 
-**状态管理**: 使用 AuthContext 管理用户登录状态、Token 存储
-
-**????**: ?? AuthContext ?????????Token ??,? ProtectedRoute ? AdminRoute ???? AuthContext.user ? AuthContext.role ???;AdminRoute ?? `AuthContext.role === 'ADMIN'` ??
-
-### 3.2 用户页面模块
-
-| Angular 原有功能 | React 实现方案 |
-|-----------------|---------------|
-| UserHomeComponent | HomePage (热销 + 即将售罄展示) |
-| UserSearchComponent | SearchPage (搜索、过滤、排序、分页) |
-| UserPhoneDetailComponent | PhoneDetailPage (详情 + 评论) |
-| CheckoutComponent | CheckoutPage |
-| WishlistComponent | WishlistPage |
-
-### 3.3 用户资料模块
-
-| Angular 原有功能 | React 实现方案 |
-|-----------------|---------------|
-| UserProfileComponent | ProfilePage |
-| EditProfileComponent | EditProfilePage |
-| ChangePasswordComponent | ChangePasswordPage |
-| ManageListingsComponent | ManageListingsPage |
-| ViewSellerReviewComponent | SellerReviewsPage |
-
-### 3.4 管理员模块
-
-| Angular 原有功能 | React 实现方案 |
-|-----------------|---------------|
-| AdminDashboardComponent | DashboardPage (统计仪表板) |
-| AdminUserManagementComponent | UserManagementPage |
-| AdminListingManagementComponent | ListingManagementPage |
-| AdminReviewManagementComponent | ReviewManagementPage |
-| AdminSalesLogsComponent | SalesLogsPage (含导出功能) |
-
-### 3.5 共享组件
-
-| Angular 原有组件 | React 实现 |
-|-----------------|-----------|
-| PhoneCardComponent | PhoneCard |
-| PhoneFormComponent | PhoneForm |
-| PaginationComponent | Pagination |
-| ReviewItemComponent | ReviewItem |
-| ConfirmationDialog | ConfirmDialog |
-| QuantityInputDialog | 使用 Modal + Input 组合 |
-| MessageComponent | Notification (Toast 风格) |
+**禁止**：
+- `baseURL='/api'` 同时 `url='/api/auth/login'`（会得到 `/api/api/auth/login`）
+- `baseURL=''` 同时 `url='/api/auth/login'`（策略不统一，容易被“admin 前缀判断”误判）
 
 ---
 
-## 四、后端 API 对接
+## 四、双 token 策略（严谨且不依赖 baseURL 字符串拼接）
 
-### 4.1 API 基础配置
+### 4.1 Token Key（定稿）
 
-- **Base URL**: 环境变量 `VITE_API_BASE_URL`（开发默认 `http://localhost:8080/api`）
-- **认证**: JWT Bearer Token，localStorage key `auth_token`
-- **请求拦截**: 自动附加 Authorization 头
-- **响应格式**: 统一 `{ success, message, data }`，类型与后端对齐
-- **错误处理**: 401/403 清理 Token 并跳转登录；其他错误弹出通知
-- **跨域/代理**: Spring Boot 放行 `http://localhost:5173`；Vite devServer 代理 `/api -> http://localhost:8080/api`；生产同源或经网关转发
+- 用户：`localStorage['user_auth_token']`
+- 管理员：`localStorage['admin_auth_token']`
 
-### 4.2 API 端点（Spring Boot）
+两者允许并存，互不覆盖。
 
-**认证**
+### 4.2 选择哪个 token（必须避免 baseURL 造成的 prefix 判断失效）
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/auth/login` | POST | 登录 |
-| `/api/auth/register` | POST | 注册 |
-| `/api/auth/verify-email` | POST | 验证邮箱 |
-| `/api/auth/request-password-reset` | POST | 发送重置密码邮件 |
-| `/api/auth/verify-reset-code` | POST | 验证重置密码代码 |
-| `/api/auth/reset-password` | POST | 重置密码 |
-| `/api/auth/resend-verification` | POST | 重新发送验证邮件 |
-| `/api/auth/me` | GET | 获取当前用户信息 |
+**强制约束**：由于已经统一 `baseURL='/api'`，请求的“最终路径”会变成 `/api/...`，但 axios 拦截器里拿到的 `config.url` 可能是 `'/admin/...'`（推荐）或 `'admin/...'`（不推荐）。
 
-**商品 / 评论**
+因此要求你在 `react-frontend/src/api/client.ts` 中实现“路径归一化”策略（此处是规范，不是改代码）：
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/phones` | GET | 商品列表（支持 search/brand/maxPrice/special/sort/page/limit） |
-| `/api/phones/{phoneId}` | GET | 商品详情 |
-| `/api/phones/by-seller/{sellerId}` | GET | 某卖家商品 |
-| `/api/phones` | POST | 创建商品 |
-| `/api/phones/{phoneId}` | PUT | 更新商品 |
-| `/api/phones/{phoneId}` | DELETE | 删除商品 |
-| `/api/phones/{phoneId}/disable` | PUT | 上/下架商品 |
-| `/api/phones/{phoneId}/reviews` | GET | 商品评论分页 |
-| `/api/phones/{phoneId}/reviews` | POST | 添加评论 |
-| `/api/phones/{phoneId}/reviews/{reviewId}/visibility` | PATCH | 切换评论可见性 |
-| `/api/phones/reviews/by-seller` | GET | 卖家全部评论 |
-| `/api/upload/image` | POST | 上传图片（multipart/form-data，携带 JWT） |
+- 输入：`config.url`（必须存在）
+- 输出：`normalizedPath`（保证以 `/` 开头，不含查询串）
+- 归一化规则：
+  - 若 `config.url` 不以 `/` 开头，补上 `/`
+  - 去掉 querystring（`?a=b`）与 hash（`#...`）
+  - 不要基于 `baseURL` 做 `startsWith('/api/admin')` 这类判断（会让逻辑依赖拼接细节）
 
-**购物车 / 订单**
+**最终判定**（唯一规则）：
+- `isAdminRequest = normalizedPath.startsWith('/admin')`
+- `isAdminRequest === true` → 使用 `admin_auth_token`
+- `isAdminRequest === false` → 使用 `user_auth_token`
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/cart` | GET | 获取购物车 |
-| `/api/cart` | POST | 添加/更新购物车商品 |
-| `/api/cart/{phoneId}` | PUT | 更新数量 |
-| `/api/cart/{phoneId}` | DELETE | 移除商品 |
-| `/api/orders/checkout` | POST | 结账创建订单 |
-| `/api/orders` | GET | 订单列表 |
-| `/api/orders/{orderId}` | GET | 订单详情 |
+> 该规则与第三节的“统一 url 书写”配套：管理端只能以 `'/admin/...'` 开头，天然不会被 `/api` 前缀影响。
 
-**资料 / 收藏**
+### 4.3 401/403 清理规则 + returnUrl（定稿）
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/profile` | GET | 获取个人资料 |
-| `/api/profile` | PUT | 更新个人资料 |
-| `/api/profile/change-password` | PUT | 修改密码 |
-| `/api/wishlist` | GET | 收藏夹列表 |
-| `/api/wishlist` | POST | 加入收藏 |
-| `/api/wishlist/{phoneId}` | DELETE | 移除收藏 |
+**后端错误响应统一来源**：全局异常处理会返回 `ApiResponse.error(message)`（见 [`GlobalExceptionHandler.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/exception/GlobalExceptionHandler.java:39) 与 [`ApiResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/ApiResponse.java:21)）。
 
-**管理员**
+前端响应拦截器收到 `401/403` 时必须按 `normalizedPath` 区分清理哪个 token，并跳转到对应登录页：
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/api/admin/login` | POST | 管理员登录 |
-| `/api/admin/profile` | GET/PUT | 获取/更新管理员资料 |
-| `/api/admin/stats` | GET | 仪表盘统计 |
-| `/api/admin/users` | GET | 用户列表（search/isDisabled/page/pageSize） |
-| `/api/admin/users/{userId}` | GET/PUT/DELETE | 用户详情/更新/删除 |
-| `/api/admin/users/{userId}/toggle-disabled` | PUT | 启用/停用用户 |
-| `/api/admin/users/{userId}/phones` | GET | 用户关联的手机列表 |
-| `/api/admin/users/{userId}/reviews` | GET | 用户发表的评论列表 |
-| `/api/admin/phones` | GET | 商品列表（支持搜索/分页） |
-| `/api/admin/phones/{phoneId}` | PUT/DELETE | 更新/删除商品 |
-| `/api/admin/phones/{phoneId}/toggle-disabled` | PUT | 切换商品上下架 |
-| `/api/admin/reviews` | GET | 评论列表（visibility/reviewerId/phoneId/search/brand/???) |
-| `/api/admin/reviews/{phoneId}/{reviewId}/toggle-visibility` | PUT | 切换评论可见性 |
-| `/api/admin/reviews/{phoneId}/{reviewId}` | DELETE | 删除评论 |
-| `/api/admin/orders` | GET | 订单列表（userId/日期区间/searchTerm/brandFilter） |
-| `/api/admin/orders/{orderId}` | GET | 订单详情 |
-| `/api/admin/orders/export` | GET | 导出订单数据（csv/json） |
-| `/api/admin/orders/stats` | GET | 销售统计 |
-| `/api/admin/logs` | GET | 操作日志 |
+- `normalizedPath.startsWith('/admin')`：
+  - 清理 `admin_auth_token`
+  - 跳转 `/admin/login?returnUrl=<encodeURIComponent(currentPath+search)>`
+- 其他路径：
+  - 清理 `user_auth_token`
+  - 跳转 `/login?returnUrl=...`
+
+**returnUrl 防循环**：
+- 若当前已在 `/login` 或 `/admin/login`，不要再追加 returnUrl 指向登录页自身（避免循环重定向）。
+- 建议：过滤 `returnUrl`，若 `decodedReturnUrl` 以 `/login` 或 `/admin/login` 开头，则丢弃，回退默认页。
 
 ---
 
-## 五、路由配置
+## 五、后端响应体 / 分页结构（必须以 Spring Boot 真实实现为准）
 
-```
-/                           → 重定向到 /home
-/home                       → HomePage
-/search                     → SearchPage
-/phone/:id                  → PhoneDetailPage
-/login                      → LoginPage
-/register                   → RegisterPage
-/verify-email               → VerifyEmailPage
-/reset-password             → ResetPasswordPage
+### 5.1 统一响应：ApiResponse<T>
 
-# 需要认证的路由
-/checkout                   → CheckoutPage (ProtectedRoute)
-/wishlist                   → WishlistPage (ProtectedRoute)
-/profile                    → ProfilePage (ProtectedRoute)
-/profile/edit               → EditProfilePage
-/profile/change-password    → ChangePasswordPage
-/profile/listings           → ManageListingsPage
-/profile/reviews            → SellerReviewsPage
+后端统一包装类为 [`ApiResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/ApiResponse.java:21)：
 
-# 管理员路由
-/admin                      → 重定向到 /admin/dashboard (AdminRoute)
-/admin/dashboard            → DashboardPage
-/admin/users                → UserManagementPage
-/admin/listings             → ListingManagementPage
-/admin/reviews              → ReviewManagementPage
-/admin/sales                → SalesLogsPage
-
-/*                          → 重定向到 /home
+```ts
+// react-frontend/src/types/api.ts（规范示意）
+export type ApiResponse<T> = {
+  success: boolean;
+  message?: string;
+  data?: T;
+};
 ```
 
-**??????**:
-- ??? ProtectedRoute ???????: ????? `/login`,??????? URL,??????
-- ????? ADMIN ????? AdminRoute ???????: ????? `/home`,?? NotificationContext ?????“????????”
+- 成功：`success=true`，可能包含 `message`、`data`
+- 失败：`success=false`，一定有 `message`（来自异常 handler）
+
+### 5.2 全局异常：message 组织方式（前端必须直接展示 message）
+
+- 验证错误：`"Validation failed: field: msg; field2: msg2"`（见 [`GlobalExceptionHandler.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/exception/GlobalExceptionHandler.java:180)）
+- 其他异常：`ApiResponse.error(ex.getMessage())`（见 [`GlobalExceptionHandler.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/exception/GlobalExceptionHandler.java:47)）
+
+前端解析错误时：
+- 优先取 `response.data.message`
+- 兜底：取 `error.message` 或统一提示“网络错误”
+
+### 5.3 管理端分页：PageResponse<T>（响应页码 1 基）
+
+管理员大量列表接口返回 `ApiResponse<PageResponse<T>>`，分页包装为 [`PageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/PageResponse.java:26)：
+
+- `currentPage`：**1 基**（由 `page.getNumber() + 1` 转换，见 [`PageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/PageResponse.java:71)）
+- `itemsPerPage`：pageSize
+- `totalPages` / `totalItems` / `hasNext` / `hasPrevious`
+
+### 5.4 用户订单分页：OrderPageResponse（items + pagination）
+
+用户订单分页 DTO 为 [`OrderPageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/order/OrderPageResponse.java:17)：
+
+```ts
+export type OrderPageResponse<Order> = {
+  items: Order[];
+  pagination: {
+    currentPage: number; // 1-based
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+  };
+};
+```
+
+### 5.5 手机列表 GET /api/phones：Map 结构（例外：data 是 Map，不是 PageResponse）
+
+`GET /api/phones` 在 Controller 内返回 `ApiResponse.success(responseMap, ...)`（见 [`PhoneController.getAllPhones()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/PhoneController.java:206)），其中 `responseMap` 的 keys 在服务层明确为（见 [`PhoneServiceImpl.getPhones()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/service/impl/PhoneServiceImpl.java:282)）：
+
+- `phones`: `PhoneListItemResponse[]`
+- `currentPage`: number（1 基）
+- `totalPages`: number
+- `total`: number（总条目数）
+
+因此前端类型建议：
+
+```ts
+export type PhonesListData<TPhone> = {
+  phones: TPhone[];
+  currentPage: number; // 1-based
+  totalPages: number;
+  total: number;
+};
+```
+
+### 5.6 评论分页：ReviewPageResponse
+
+评论分页响应为 [`ReviewPageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/phone/ReviewPageResponse.java:17)：
+
+- `reviews`: ReviewResponse[]
+- `totalReviews`: number
+- `currentPage`: 1 基
+- `totalPages`: number
+
+### 5.7 例外响应：管理员查看单机评论不走 ApiResponse<T>
+
+管理员“按手机查看评论”接口返回 `PhoneReviewListResponse`（不在 `ApiResponse<T>` wrapper 内，见 [`AdminController.getPhoneReviews()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:283)）。
+
+该接口前端必须单独建类型与解析逻辑，不能复用 `ApiResponse<T>`。
 
 ---
 
-## 六、状态管理策略
+## 六、分页：请求 0 基 vs 响应 1 基（写清转换规则）
 
-### 6.1 ???? (React Context API)
+后端存在两类分页“请求 page”口径：
 
-| Context | ???? |
-|---------|---------|
-| AuthContext | ?????Token????????/???? |
-| CartContext | ???????(????? API ?????????????,Context ???????) |
-| NotificationContext | ???????? |
+### 6.1 管理端列表：请求 page 多为 0 基，但响应 currentPage 永远 1 基
 
-**Context 架构**:
-- 每个 Context 配套 Provider 和 useXxx hook
-- 在 App 根组件中嵌套所有 Provider
-- 通过自定义 hook 暴露状态和方法
+例如（请求 0 基）：
+- `GET /api/admin/users?page=0&pageSize=10`（见 [`AdminController.getAllUsers()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:96)）
+- `GET /api/admin/phones?page=0&pageSize=10`（见 [`AdminController.getAllPhones()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:208)）
+- `GET /api/admin/reviews?page=0&pageSize=10`（见 [`AdminController.getAllReviews()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:263)）
+- `GET /api/admin/orders?page=0&pageSize=10`（见 [`AdminController.getAllOrders()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:337)）
+- `GET /api/admin/logs?page=0&pageSize=10`（见 [`AdminController.getAllLogs()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:417)）
 
-### 6.2 ????? (TanStack Query)
+**前端变量命名建议（避免混淆）**：
+- 管理端请求用：`pageIndex`（0-based）
+- 响应展示用：`currentPage`（1-based，来自后端）
 
-- ????????????
-- ?????
-- ????
-- ????
-- ??????
-- phones/profile/orders/wishlist ??????? API ?????,?? TanStack Query ?????,??????
+转换公式：
+- 请求：`pageIndex` 直接发给后端 `page`
+- UI 展示：用后端 `currentPage`（无需再 +1）
+- 若 UI 组件需要 0 基：`pageIndexFromResponse = currentPage - 1`
 
-**??**: ???????????????????
+### 6.2 管理端“按用户查看 phones/reviews”：请求 page 是 1 基（controller 内会 -1）
 
----
+例如：
+- `GET /api/admin/users/{userId}/phones?page=1&limit=10`（controller 内 `page - 1`，见 [`AdminController.getUserPhones()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:164)）
+- `GET /api/admin/users/{userId}/reviews?page=1&limit=10`（同理，见 [`AdminController.getUserReviews()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:184)）
 
-## 七、UI/UX 设计原则
+因此这两类接口前端建议用：
+- `pageNumber`（1-based）用于请求参数 `page`
+- 响应依旧用 `PageResponse.currentPage`（1-based）
 
-### 7.1 样式迁移策略
+### 6.3 用户侧 phones/reviews/orders：请求 page 多为 1 基
 
-- **保持原有 UI 风格**: 参考 Angular 版本的视觉设计
-- **使用 Tailwind 重构**: 将 SCSS 样式转换为 Tailwind 类
-- **响应式设计**: 移动端优先，支持多种屏幕尺寸
-- **组件一致性**: 统一按钮、输入框、卡片等基础组件样式
-
-### 7.2 交互体验
-
-- 页面加载状态指示
-- 表单验证即时反馈
-- 操作成功/失败通知
-- 确认对话框防止误操作
-- 平滑过渡动画
+- `GET /api/phones?page=1&limit=12`（服务层会 `page - 1`，见 [`PhoneServiceImpl.getPhones()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/service/impl/PhoneServiceImpl.java:282)）
+- `GET /api/phones/{phoneId}/reviews?page=1&limit=10`（分页响应 `ReviewPageResponse.currentPage` 为 1 基，见 [`ReviewPageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/phone/ReviewPageResponse.java:17)）
+- `GET /api/orders?page=1&pageSize=10`（响应 `OrderPageResponse.pagination.currentPage` 1 基，见 [`OrderPageResponse.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/response/order/OrderPageResponse.java:37)）
 
 ---
 
-## 八、开发阶段规划
+## 七、图片上传：只保存 URL（以 data.fileUrl 为准）+ Vite 代理 /uploads
 
-### 阶段一：项目初始化
-- 创建 Vite + React + TypeScript 项目
-- 配置 Tailwind CSS
-- 设置项目目录结构
-- 配置开发代理和环境变量
+### 7.1 上传接口与返回
 
-### 阶段二：基础架构
-- 实现 API 客户端和拦截器
-- 创建类型定义
-- 实现全局状态 Context
-- 创建基础 UI 组件
+上传端点：
+- `POST /api/upload/image`（multipart/form-data，字段名 `file`，需要登录，见 [`FileUploadController.uploadImage()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/FileUploadController.java:83)）
 
-### 阶段三：认证模块
-- 登录/注册页面
-- 邮箱验证和密码重置
-- 路由守卫实现
-- Token 管理
+后端返回 `ApiResponse<FileUploadResponse>`，前端只关心：
+- `data.fileUrl`（示例为 `/uploads/images/<uuid>.<ext>`，见 [`FileUploadController.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/FileUploadController.java:25)）
 
-### 阶段四：用户功能
-- 首页（热销、即将售罄）
-- 搜索页面（过滤、排序、分页）
-- 商品详情页
-- 购物车和结账
-- 收藏夹
+**前端表单字段仅保存 URL 字符串**：
+- phone.image: string（值必须来自 `data.fileUrl`）
+- 不保存 Base64，不保存本地文件对象
 
-### 阶段五：用户资料
-- 资料展示和编辑
-- 密码修改
-- 卖家商品管理
-- 卖家评论查看
+### 7.2 Vite dev 代理（必须补齐 /uploads）
 
-### 阶段六：管理员后台
-- 仪表板统计
-- 用户管理
-- 商品管理
-- 评论管理
-- 销售日志和导出
+开发环境为确保 `<img src="/uploads/...">` 可访问，建议配置代理（示例）：
 
-### 阶段七：优化和测试
-- 性能优化
-- 响应式适配
-- 错误处理完善
-- 集成测试
+```ts
+// react-frontend/vite.config.ts（规范示意）
+export default {
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:8080', changeOrigin: true }
+    }
+  }
+};
+```
+
+### 7.3 后端存储路径“images/images”配置歧义（仅文档说明，不改后端）
+
+当前默认上传目录为 `file.upload.dir = "./uploads/images"`（见 [`FileStorageProperties.java`](spring-old-phone-deals/src/main/java/com/oldphonedeals/config/FileStorageProperties.java:20)），而上传时 `subDirectory = "images"`（见 [`FileUploadController.uploadImage()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/FileUploadController.java:83)），存储实现会拼接为 `Paths.get(dir, subDirectory)`（见 [`FileStorageServiceImpl.storeFile()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/service/impl/FileStorageServiceImpl.java:48)）。
+
+这会导致实际落盘目录可能变成 `./uploads/images/images/...`。  
+前端不应猜测文件系统路径，必须以 `data.fileUrl` 为准。
 
 ---
 
-## 九、关键迁移映射
+## 八、创建商品 seller 字段必填：前端必须从 /api/auth/me 取值
 
-### Angular → React 架构对照
+后端创建商品请求 DTO 中 `seller` 字段为必填（`@NotBlank`，见 [`PhoneCreateRequest.seller`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/request/phone/PhoneCreateRequest.java:19)）。
 
-| Angular 概念 | React 对应 |
-|-------------|-----------|
-| Services | Custom Hooks + API 模块 |
-| BehaviorSubject | React Context + useState |
-| Route Guards | ProtectedRoute HOC |
-| HttpClient | Axios + TanStack Query |
-| Reactive Forms | React Hook Form |
-| Angular Material | Headless UI + Tailwind |
-| Modules | 目录组织 + 懒加载 |
-| Dependency Injection | Hooks + Context |
+而 Controller 创建商品时会从 JWT 取当前用户 ID（见 [`PhoneController.createPhone()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/PhoneController.java:54)），并在服务层验证卖家存在（见 [`PhoneServiceImpl.createPhone()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/service/impl/PhoneServiceImpl.java:76)）。
+
+**因此前端创建商品必须：**
+1) 先用 `GET /api/auth/me` 获取当前用户信息（用于拿到当前用户 id）
+2) 提交 `POST /api/phones` 时：
+   - `seller = me.id`（或等价 userId 字段；以 `/api/auth/me` 返回字段为准）
+   - 其余字段按 DTO 填写
+3) 不允许提交空 seller（否则会触发 `MethodArgumentNotValidException`，返回 400 + `Validation failed: ...`，见 [`GlobalExceptionHandler.handleValidationException()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/exception/GlobalExceptionHandler.java:180)）
 
 ---
 
-## 十、注意事项
+## 九、管理端更新商品：不支持改图片（必须在 UI 上写清）
 
-1. **Token 双存储**: 用户和管理员使用不同的 Token key
-2. **跨标签页同步**: 监听 storage 事件处理登出同步
-3. **管理员实时通知**: 使用轮询或 WebSocket 检测新订单
-4. **图片处理**: 支持 URL 和 Base64 两种格式
-5. **分页一致性**: 前端分页参数与后端保持一致
-6. **错误边界**: 添加 React Error Boundary 处理异常
+管理员更新商品请求 DTO 为 [`UpdatePhoneRequest`](spring-old-phone-deals/src/main/java/com/oldphonedeals/dto/request/admin/UpdatePhoneRequest.java:1)，字段仅包含：
+- `title`
+- `brand`
+- `price`
+- `stock`
+- `isDisabled`
+
+管理员更新接口为 `PUT /api/admin/phones/{phoneId}`（见 [`AdminController.updatePhone()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/controller/AdminController.java:221)）。
+
+**结论（定稿）**：
+- 管理端商品编辑 UI **不得提供图片上传/图片 URL 修改**能力（后端不支持该字段）。
+- 若需要改图片，只能走“用户侧卖家更新商品”（`PUT /api/phones/{phoneId}`）的流程（该接口支持 image 更新，见 [`PhoneServiceImpl.updatePhone()`](spring-old-phone-deals/src/main/java/com/oldphonedeals/service/impl/PhoneServiceImpl.java:116)）。
 
 ---
 
-## 十一、交付物
+## 十、路由与守卫：React Router v6（避免闪烁/多次重定向）
 
-完成后将产出：
-- 完整的 React 前端项目
-- 与 Spring Boot 后端完全对接
-- 功能和 UI 与 Angular 版本保持一致
-- 响应式设计，支持移动端
-- 完善的类型定义和代码规范
+### 10.1 路由清单（建议）
 
-## ??????
+- `/` → `/home`
+- `/home` / `/search` / `/phone/:id`
+- `/login` / `/register` / `/verify-email` / `/reset-password`
+- `/admin/login`
+- 用户受保护：`/checkout` `/wishlist` `/profile/...`
+- 管理受保护：`/admin/*`（除 `/admin/login`）
+- `*` → 404 页面（必须落地）
 
-1. **Token ???**: ??????? JWT Token,???? `localStorage` key `auth_token`,????? refresh token; Token ??? 401/403 ???? API ?????,??前端?? Token ? AuthContext,?? `/login` ????,??? URL ????
-2. **??????**: ????? `utils/storage.ts` ?? localStorage/sessionStorage ???????,????????? try/catch ??,?????? SSR ????
-3. **???????**: v1 ????? WebSocket ???????; ?????????,??? `useNotificationStream` Hook + NotificationContext ????????
-4. **????**: ??? Spring Boot API ????? URL(?????? CDN?缓存),???? multipart/form-data ?????;???? Base64 ????????(??????)
-5. **?????**: ????? React Hook Form + Zod,???? Zod schema ????? Spring Boot DTO,????????????????? 400 ?????,?? Toast ???后端 message
-6. **????**: App ?? Global Error Boundary,?????????渲染?????"????????" UI ???"重新加载"????????????????? React Query + NotificationContext ??,????? Error Boundary
+### 10.2 ProtectedRoute 必须是“loading 决策”而不是“只看 token”
+
+仅检查 localStorage token 会导致：
+- 页面首次加载时闪烁（先渲染受保护页→再重定向）
+- token 过期时出现多次重定向
+
+**定稿策略**（用户与管理员各一套）：
+
+- 第一步：读 token（快速判断是否“可能已登录”）
+- 第二步：若存在 token，必须发起 `me/profile` 查询（TanStack Query）：
+  - 用户：`GET /api/auth/me`
+  - 管理：`GET /api/admin/profile`
+- 在 Query `isLoading`/`isFetching` 时，ProtectedRoute 必须渲染 Loading（不要 Navigate）
+- Query 成功：放行
+- Query 失败（401/403 或其他错误）：
+  - 401/403：按第四节清 token + 跳登录页（带 returnUrl）
+  - 非 401/403：建议展示“系统错误页/重试”而不是强制登出（避免把服务器故障当未登录）
+
+---
+
+## 十一、状态管理（唯一原则：Axios + TanStack Query 管理服务端状态）
+
+### 11.1 原则（必须统一）
+
+- **服务端状态**（me/profile、phones、reviews、cart、orders、admin lists...）：
+  - 全部通过 TanStack Query：`useQuery` / `useMutation` + `invalidateQueries`
+- **禁止**：
+  - 用 Context 当 Auth/Cart 的唯一真相
+  - 在多个地方重复缓存同一份服务端数据
+- Context（若使用）只保留纯 UI：toast、modal、主题等
+
+### 11.2 推荐 Query Keys（最小可执行集合）
+
+- 用户：`['auth', 'me']`（`GET /api/auth/me`）
+- 管理：`['admin', 'profile']`（`GET /api/admin/profile`）
+- phones 列表：`['phones', { search, brand, page, limit, sortBy, sortOrder, special, maxPrice }]`
+- phone 详情：`['phones', 'detail', phoneId]`
+- reviews：`['reviews', phoneId, { page, limit }]`
+- wishlist：`['wishlist']`
+- orders：`['orders', { page, pageSize }]`
+- admin users：`['admin', 'users', { pageIndex, pageSize, search, isDisabled }]`
+- admin phones：`['admin', 'phones', { pageIndex, pageSize }]`
+- admin reviews：`['admin', 'reviews', { pageIndex, pageSize, ...filters }]`
+
+---
+
+## 十二、开发阶段规划（简版）
+
+1) 初始化 `react-frontend/`（Vite + React + TS + Tailwind）
+2) 落地 Axios client（第三/四节规则）
+3) 落地 types（第五节规则：ApiResponse / PageResponse / Map 结构 / 例外响应）
+4) 落地 Router + ProtectedRoute（第十节 loading 决策）
+5) 用户模块（phones/reviews/cart/orders/profile/wishlist）
+6) 管理模块（users/phones/reviews/orders/logs）
+7) 统一错误处理与 UX 打磨（Toast + ErrorBoundary + retry）
+
+---
+
+## 十三、注意事项（最终约束清单）
+
+1) **路径规则唯一**：`baseURL='/api'` 且 url 仅用 `'/auth' '/phones' '/admin' ...`（见本文件第三节）
+2) **双 token 严谨**：按 `normalizedPath.startsWith('/admin')` 判定 token（见本文件第四节）
+3) **分页不可混用**：管理端 pageIndex(0) / 响应 currentPage(1) 分离（见本文件第六节）
+4) **上传只存 URL**：只使用 `data.fileUrl`，并代理 `/uploads`（见本文件第七节）
+5) **seller 必填**：创建 phone 必须从 `/api/auth/me` 填入 seller（见本文件第八节）
+6) **管理端不支持改图**：UpdatePhoneRequest 无 image（见本文件第九节）
+7) **守卫必须 loading 决策**：避免闪烁与重定向风暴（见本文件第十节）
+8) **服务端状态只用 Query**：Context 仅 UI（见本文件第十一节）
