@@ -6,6 +6,10 @@ import {
   AdminHomePage,
   AdminLayoutPage,
   AdminLoginPage,
+  AdminLogsPage,
+  AdminPhonesPage,
+  AdminOrdersPage,
+  AdminReviewsPage,
   AdminUsersPage,
   CheckoutPage,
   HomePage,
@@ -14,6 +18,7 @@ import {
   PhoneDetailPage,
   ProfileHomePage,
   ProfileLayoutPage,
+  ProfileListingsPage,
   ProfileSettingsPage,
   RegisterPage,
   ResetPasswordPage,
@@ -87,6 +92,10 @@ export const router = createBrowserRouter([
                 element: <ProfileSettingsPage />,
               },
               {
+                path: 'listings',
+                element: <ProfileListingsPage />,
+              },
+              {
                 path: '*',
                 element: <NotFoundPage />,
               },
@@ -112,6 +121,22 @@ export const router = createBrowserRouter([
               {
                 path: 'users',
                 element: <AdminUsersPage />,
+              },
+              {
+                path: 'phones',
+                element: <AdminPhonesPage />,
+              },
+              {
+                path: 'reviews',
+                element: <AdminReviewsPage />,
+              },
+              {
+                path: 'orders',
+                element: <AdminOrdersPage />,
+              },
+              {
+                path: 'logs',
+                element: <AdminLogsPage />,
               },
               {
                 path: '*',

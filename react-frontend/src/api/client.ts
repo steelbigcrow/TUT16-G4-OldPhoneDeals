@@ -1,8 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
 import { normalizePath } from './normalizePath'
-
-const USER_TOKEN_KEY = 'user_auth_token'
-const ADMIN_TOKEN_KEY = 'admin_auth_token'
+import { clearTokenForPath, getTokenForPath } from '../auth/tokens'
 
 type ApiErrorData = {
   message?: string
@@ -10,26 +8,6 @@ type ApiErrorData = {
 
 type RequestConfigWithMeta = {
   __normalizedPath?: string
-}
-
-function getTokenForPath(normalizedPath: string): string | null {
-  const isAdminRequest = normalizedPath.startsWith('/admin')
-  const tokenKey = isAdminRequest ? ADMIN_TOKEN_KEY : USER_TOKEN_KEY
-  try {
-    return localStorage.getItem(tokenKey)
-  } catch {
-    return null
-  }
-}
-
-function clearTokenForPath(normalizedPath: string) {
-  const isAdminRequest = normalizedPath.startsWith('/admin')
-  const tokenKey = isAdminRequest ? ADMIN_TOKEN_KEY : USER_TOKEN_KEY
-  try {
-    localStorage.removeItem(tokenKey)
-  } catch {
-    // ignore
-  }
 }
 
 function buildLoginRedirectUrl(normalizedPath: string): string {

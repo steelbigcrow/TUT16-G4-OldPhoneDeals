@@ -1,2 +1,8 @@
 export { apiClient, getApiErrorMessage } from './client'
 export { normalizePath } from './normalizePath'
+export * as phonesApi from './phones'
+export * as cartApi from './cart'
+export * as wishlistApi from './wishlist'
+export * as ordersApi from './orders'
+export * as profileApi from './profile'
+export * as adminApi from './admin'

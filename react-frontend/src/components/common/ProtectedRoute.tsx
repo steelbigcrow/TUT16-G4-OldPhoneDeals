@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useLocation, Navigate, Outlet } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { getApiErrorMessage } from '../../api'
+import { ADMIN_TOKEN_KEY, USER_TOKEN_KEY, safeGetToken } from '../../auth/tokens'
 import { useAdminAuth, useAuth } from '../../hooks'
 
 type ProtectedRouteMode = 'user' | 'admin'
@@ -9,17 +10,6 @@ type ProtectedRouteMode = 'user' | 'admin'
 export type ProtectedRouteProps = {
   mode: ProtectedRouteMode
   loadingFallback?: ReactNode
-}
-
-const USER_TOKEN_KEY = 'user_auth_token'
-const ADMIN_TOKEN_KEY = 'admin_auth_token'
-
-function safeGetToken(tokenKey: string): string | null {
-  try {
-    return localStorage.getItem(tokenKey)
-  } catch {
-    return null
-  }
 }
 
 function buildLoginRedirect(

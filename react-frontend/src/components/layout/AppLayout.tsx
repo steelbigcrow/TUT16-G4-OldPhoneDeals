@@ -1,4 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from '../common/ErrorBoundary'
+import { ADMIN_TOKEN_KEY, USER_TOKEN_KEY, clearAllTokens, safeGetToken } from '../../auth/tokens'
+import { useNotifications } from '../../contexts/NotificationContext'
 
 function classNames(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(' ')
@@ -9,6 +12,10 @@ const navLinkBase =
 
 export function AppLayout() {
   const location = useLocation()
+  const notifications = useNotifications()
+
+  const hasUserToken = Boolean(safeGetToken(USER_TOKEN_KEY))
+  const hasAdminToken = Boolean(safeGetToken(ADMIN_TOKEN_KEY))
 
   return (
     <div className='min-h-screen bg-slate-50 text-slate-900'>
@@ -90,11 +97,29 @@ export function AppLayout() {
             <span className='mr-2 opacity-75'>Path</span>
             <span className='font-mono'>{location.pathname}</span>
           </div>
+
+          <div className='ml-auto flex items-center gap-2 sm:ml-0'>
+            {(hasUserToken || hasAdminToken) && (
+              <button
+                type='button'
+                onClick={() => {
+                  clearAllTokens()
+                  notifications.info('Signed out')
+                  window.location.assign('/home')
+                }}
+                className='rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-100 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400'
+              >
+                Sign out
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       <main className='mx-auto max-w-6xl px-4 py-6'>
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )
