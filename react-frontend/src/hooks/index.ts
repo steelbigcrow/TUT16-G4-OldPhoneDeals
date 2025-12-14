@@ -14,6 +14,7 @@ export { useWishlist, useAddToWishlist, useRemoveFromWishlist } from './useWishl
 export { useCart, useAddToCart, useUpdateCartItem, useRemoveFromCart } from './useCart'
 export { useOrders, useCheckout } from './useOrders'
 export { useProfile, useUpdateProfile, useChangePassword } from './useProfile'
+export { useUploadImage } from './useUploadImage'
 export {
   useAdminStats,
   useAdminUsers,

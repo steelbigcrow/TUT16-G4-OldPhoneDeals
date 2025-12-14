@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api'
-import { useCreatePhone, useProfile, useSellerPhones, useTogglePhoneDisabled } from '../../hooks'
+import {
+  useCreatePhone,
+  useProfile,
+  useSellerPhones,
+  useTogglePhoneDisabled,
+  useUploadImage,
+} from '../../hooks'
 import { useNotifications } from '../../contexts/NotificationContext'
 import { setZodFormErrors } from '../../utils/zodFormErrors'
 import { resolveImageUrl } from '../../utils/images'
@@ -44,12 +50,15 @@ export function ProfileListingsPage() {
   const sellerPhones = useSellerPhones(sellerId)
   const createPhone = useCreatePhone()
   const toggleDisabled = useTogglePhoneDisabled(sellerId)
+  const uploadImage = useUploadImage()
 
   const form = useForm<CreateValues>({
     defaultValues: { title: '', brand: 'APPLE', image: '', stock: 1, price: 100 },
   })
 
   const phones = sellerPhones.data?.success ? sellerPhones.data.data ?? [] : []
+  const imageValue = form.watch('image')
+  const imagePreview = resolveImageUrl(imageValue)
 
   return (
     <div className='space-y-6'>
@@ -122,16 +131,89 @@ export function ProfileListingsPage() {
             </select>
           </div>
 
-          <div>
-            <label className='text-xs font-medium text-slate-700'>Image (URL or path)</label>
-            <input
-              {...form.register('image')}
-              className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
-              placeholder='https://... or /uploads/images/...'
-            />
-            {form.formState.errors.image?.message ? (
-              <div className='mt-1 text-xs text-rose-700'>{form.formState.errors.image.message}</div>
-            ) : null}
+          <div className='sm:col-span-2 space-y-2'>
+            <div>
+              <label
+                htmlFor='profile_listing_image_upload'
+                className='text-xs font-medium text-slate-700'
+              >
+                Upload image
+              </label>
+              <input
+                id='profile_listing_image_upload'
+                aria-label='Upload image'
+                type='file'
+                accept='image/*'
+                disabled={uploadImage.isPending}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+
+                  try {
+                    const res = await uploadImage.mutateAsync(file)
+                    if (res.success && res.data?.fileUrl) {
+                      form.setValue('image', res.data.fileUrl, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                      notifications.success('Image uploaded')
+                    } else {
+                      notifications.error(res.message ?? 'Image upload failed')
+                    }
+                  } catch (err) {
+                    notifications.error(getApiErrorMessage(err))
+                  } finally {
+                    e.target.value = ''
+                  }
+                }}
+                className='mt-1 block w-full text-sm'
+              />
+              <div className='mt-1 text-xs text-slate-500'>
+                Upload uses `POST /api/upload/image` and stores a `/uploads/...` URL.
+              </div>
+            </div>
+
+            <div className='flex flex-wrap items-center gap-3'>
+              <div className='h-16 w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100'>
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt='Preview'
+                    className='h-full w-full object-cover'
+                  />
+                ) : null}
+              </div>
+
+              <div className='min-w-0 flex-1'>
+                <label
+                  htmlFor='profile_listing_image_url'
+                  className='text-xs font-medium text-slate-700'
+                >
+                  Image URL
+                </label>
+                <input
+                  id='profile_listing_image_url'
+                  {...form.register('image')}
+                  className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
+                  placeholder='https://... or /uploads/images/...'
+                />
+                {form.formState.errors.image?.message ? (
+                  <div className='mt-1 text-xs text-rose-700'>
+                    {form.formState.errors.image.message}
+                  </div>
+                ) : null}
+              </div>
+
+              {imageValue ? (
+                <button
+                  type='button'
+                  onClick={() => form.setValue('image', '', { shouldDirty: true, shouldValidate: true })}
+                  className='rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50'
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div>
@@ -164,7 +246,7 @@ export function ProfileListingsPage() {
           <div className='sm:col-span-2'>
             <button
               type='submit'
-              disabled={createPhone.isPending}
+              disabled={createPhone.isPending || uploadImage.isPending}
               className='w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50'
             >
               Create listing
@@ -256,4 +338,3 @@ export function ProfileListingsPage() {
     </div>
   )
 }
-

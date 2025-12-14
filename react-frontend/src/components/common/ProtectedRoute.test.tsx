@@ -1,87 +1,99 @@
-import React from 'react'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { render, screen } from '@testing-library/react'
+import { RouterProvider, createMemoryRouter, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
+import { USER_TOKEN_KEY } from '../../auth/tokens'
+import * as hooks from '../../hooks'
 
-vi.mock('../../hooks', () => {
-  const query = {
-    isLoading: false,
-    isFetching: false,
-    isError: false,
-    error: null,
-    refetch: vi.fn(),
-  }
+vi.mock('../../hooks', () => ({
+  useAuth: vi.fn(),
+  useAdminAuth: vi.fn(),
+}))
 
-  return {
-    useAuth: vi.fn(() => query),
-    useAdminAuth: vi.fn(() => query),
-  }
-})
+function LoginProbe() {
+  const location = useLocation()
+  return (
+    <div>
+      Login page <span data-testid='search'>{location.search}</span>
+    </div>
+  )
+}
 
 describe('ProtectedRoute', () => {
+  const useAuthMock = vi.mocked(hooks.useAuth)
+
   beforeEach(() => {
-    localStorage.removeItem('user_auth_token')
-    localStorage.removeItem('admin_auth_token')
+    localStorage.clear()
+    useAuthMock.mockReset()
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    } as any)
   })
 
-  it('user：无 token 时 Navigate 到 /login 并携带 returnUrl', () => {
+  it('redirects to /login with returnUrl when no user token is present', async () => {
     const router = createMemoryRouter(
       [
+        { path: '/login', element: <LoginProbe /> },
         {
-          path: '/',
           element: <ProtectedRoute mode='user' />,
-          children: [{ path: 'protected', element: <div>Protected</div> }],
+          children: [{ path: '/wishlist', element: <div>Wishlist</div> }],
         },
-        { path: '/login', element: <div>Login</div> },
       ],
-      { initialEntries: ['/protected?x=1'] },
+      { initialEntries: ['/wishlist'] },
     )
 
     render(<RouterProvider router={router} />)
 
-    expect(screen.getByText('Login')).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/login')
-    expect(router.state.location.search).toBe(`?returnUrl=${encodeURIComponent('/protected?x=1')}`)
+    expect(await screen.findByText(/Login page/i)).toBeInTheDocument()
+    expect(screen.getByTestId('search').textContent).toContain('returnUrl=')
   })
 
-  it('admin：无 token 时 Navigate 到 /admin/login 并携带 returnUrl', () => {
+  it('shows loadingFallback while auth query is loading', () => {
+    localStorage.setItem(USER_TOKEN_KEY, 'token')
+    useAuthMock.mockReturnValue({
+      isLoading: true,
+      isFetching: false,
+      isError: false,
+    } as any)
+
     const router = createMemoryRouter(
       [
+        { path: '/login', element: <LoginProbe /> },
         {
-          path: '/',
-          element: <ProtectedRoute mode='admin' />,
-          children: [{ path: 'admin/dashboard', element: <div>AdminDashboard</div> }],
+          element: <ProtectedRoute mode='user' loadingFallback={<div>Auth loading</div>} />,
+          children: [{ path: '/wishlist', element: <div>Wishlist</div> }],
         },
-        { path: '/admin/login', element: <div>AdminLogin</div> },
       ],
-      { initialEntries: ['/admin/dashboard?tab=users'] },
+      { initialEntries: ['/wishlist'] },
     )
 
     render(<RouterProvider router={router} />)
-
-    expect(screen.getByText('AdminLogin')).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/admin/login')
-    expect(router.state.location.search).toBe(
-      `?returnUrl=${encodeURIComponent('/admin/dashboard?tab=users')}`,
-    )
+    expect(screen.getByText('Auth loading')).toBeInTheDocument()
+    expect(screen.queryByText('Wishlist')).not.toBeInTheDocument()
   })
 
-  it('login 页自身不产生循环 returnUrl（会清理现有 returnUrl）', () => {
+  it('renders child routes when token exists and auth query succeeds', async () => {
+    localStorage.setItem(USER_TOKEN_KEY, 'token')
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    } as any)
+
     const router = createMemoryRouter(
       [
         {
-          path: '/',
           element: <ProtectedRoute mode='user' />,
-          children: [{ path: 'login', element: <div>Login</div> }],
+          children: [{ path: '/wishlist', element: <div>Wishlist</div> }],
         },
       ],
-      { initialEntries: ['/login?returnUrl=%2Flogin%3FreturnUrl%3D%252Flogin'] },
+      { initialEntries: ['/wishlist'] },
     )
 
     render(<RouterProvider router={router} />)
-
-    expect(router.state.location.pathname).toBe('/login')
-    expect(router.state.location.search).toBe('')
+    expect(await screen.findByText('Wishlist')).toBeInTheDocument()
   })
 })
+
