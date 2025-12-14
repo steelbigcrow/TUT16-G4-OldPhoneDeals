@@ -184,8 +184,11 @@ export function CheckoutPage() {
                 })}
               >
                 <div>
-                  <label className='text-xs font-medium text-slate-700'>Street</label>
+                  <label htmlFor='checkout_street' className='text-xs font-medium text-slate-700'>
+                    Street
+                  </label>
                   <input
+                    id='checkout_street'
                     {...form.register('street')}
                     className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                   />
@@ -196,8 +199,11 @@ export function CheckoutPage() {
 
                 <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>City</label>
+                    <label htmlFor='checkout_city' className='text-xs font-medium text-slate-700'>
+                      City
+                    </label>
                     <input
+                      id='checkout_city'
                       {...form.register('city')}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                     />
@@ -206,8 +212,11 @@ export function CheckoutPage() {
                     ) : null}
                   </div>
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>State</label>
+                    <label htmlFor='checkout_state' className='text-xs font-medium text-slate-700'>
+                      State
+                    </label>
                     <input
+                      id='checkout_state'
                       {...form.register('state')}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                     />
@@ -219,8 +228,11 @@ export function CheckoutPage() {
 
                 <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>Zip</label>
+                    <label htmlFor='checkout_zip' className='text-xs font-medium text-slate-700'>
+                      Zip
+                    </label>
                     <input
+                      id='checkout_zip'
                       {...form.register('zip')}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                     />
@@ -229,8 +241,11 @@ export function CheckoutPage() {
                     ) : null}
                   </div>
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>Country</label>
+                    <label htmlFor='checkout_country' className='text-xs font-medium text-slate-700'>
+                      Country
+                    </label>
                     <input
+                      id='checkout_country'
                       {...form.register('country')}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                     />
@@ -257,4 +272,3 @@ export function CheckoutPage() {
     </div>
   )
 }
-

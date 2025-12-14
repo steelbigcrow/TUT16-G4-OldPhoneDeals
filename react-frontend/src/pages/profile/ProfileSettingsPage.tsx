@@ -78,8 +78,11 @@ export function ProfileSettingsPage() {
         >
           <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
             <div>
-              <label className='text-xs font-medium text-slate-700'>First name</label>
+              <label htmlFor='profile_settings_first_name' className='text-xs font-medium text-slate-700'>
+                First name
+              </label>
               <input
+                id='profile_settings_first_name'
                 {...updateForm.register('firstName')}
                 className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
               />
@@ -90,8 +93,11 @@ export function ProfileSettingsPage() {
               ) : null}
             </div>
             <div>
-              <label className='text-xs font-medium text-slate-700'>Last name</label>
+              <label htmlFor='profile_settings_last_name' className='text-xs font-medium text-slate-700'>
+                Last name
+              </label>
               <input
+                id='profile_settings_last_name'
                 {...updateForm.register('lastName')}
                 className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
               />
@@ -104,8 +110,11 @@ export function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>Email</label>
+            <label htmlFor='profile_settings_email' className='text-xs font-medium text-slate-700'>
+              Email
+            </label>
             <input
+              id='profile_settings_email'
               type='email'
               autoComplete='email'
               {...updateForm.register('email')}
@@ -117,10 +126,14 @@ export function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>
+            <label
+              htmlFor='profile_settings_email_change_current_password'
+              className='text-xs font-medium text-slate-700'
+            >
               Current password (required when changing email)
             </label>
             <input
+              id='profile_settings_email_change_current_password'
               type='password'
               autoComplete='current-password'
               {...updateForm.register('currentPassword')}
@@ -164,8 +177,14 @@ export function ProfileSettingsPage() {
           })}
         >
           <div>
-            <label className='text-xs font-medium text-slate-700'>Current password</label>
+            <label
+              htmlFor='profile_settings_password_current'
+              className='text-xs font-medium text-slate-700'
+            >
+              Current password
+            </label>
             <input
+              id='profile_settings_password_current'
               type='password'
               autoComplete='current-password'
               {...passwordForm.register('currentPassword')}
@@ -179,8 +198,11 @@ export function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>New password</label>
+            <label htmlFor='profile_settings_password_new' className='text-xs font-medium text-slate-700'>
+              New password
+            </label>
             <input
+              id='profile_settings_password_new'
               type='password'
               autoComplete='new-password'
               {...passwordForm.register('newPassword')}
@@ -205,4 +227,3 @@ export function ProfileSettingsPage() {
     </div>
   )
 }
-

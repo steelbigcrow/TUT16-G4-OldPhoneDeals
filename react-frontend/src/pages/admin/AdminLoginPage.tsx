@@ -65,8 +65,11 @@ export function AdminLoginPage() {
         })}
       >
         <div>
-          <label className='text-xs font-medium text-slate-700'>Email</label>
+          <label htmlFor='admin_login_email' className='text-xs font-medium text-slate-700'>
+            Email
+          </label>
           <input
+            id='admin_login_email'
             type='email'
             autoComplete='email'
             {...form.register('email')}
@@ -78,8 +81,11 @@ export function AdminLoginPage() {
         </div>
 
         <div>
-          <label className='text-xs font-medium text-slate-700'>Password</label>
+          <label htmlFor='admin_login_password' className='text-xs font-medium text-slate-700'>
+            Password
+          </label>
           <input
+            id='admin_login_password'
             type='password'
             autoComplete='current-password'
             {...form.register('password')}
@@ -117,4 +123,3 @@ export function AdminLoginPage() {
     </div>
   )
 }
-

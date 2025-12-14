@@ -243,8 +243,11 @@ export function PhoneDetailPage() {
                   })}
                 >
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>Rating</label>
+                    <label htmlFor='phone_review_rating' className='text-xs font-medium text-slate-700'>
+                      Rating
+                    </label>
                     <select
+                      id='phone_review_rating'
                       {...form.register('rating')}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
                     >
@@ -262,8 +265,11 @@ export function PhoneDetailPage() {
                   </div>
 
                   <div>
-                    <label className='text-xs font-medium text-slate-700'>Comment</label>
+                    <label htmlFor='phone_review_comment' className='text-xs font-medium text-slate-700'>
+                      Comment
+                    </label>
                     <textarea
+                      id='phone_review_comment'
                       {...form.register('comment')}
                       rows={3}
                       className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
@@ -297,4 +303,3 @@ export function PhoneDetailPage() {
     </div>
   )
 }
-

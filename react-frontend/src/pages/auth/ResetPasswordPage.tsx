@@ -64,8 +64,14 @@ export function ResetPasswordPage() {
           })}
         >
           <div>
-            <label className='text-xs font-medium text-slate-700'>Email</label>
+            <label
+              htmlFor='reset_password_request_email'
+              className='text-xs font-medium text-slate-700'
+            >
+              Email
+            </label>
             <input
+              id='reset_password_request_email'
               type='email'
               autoComplete='email'
               {...requestForm.register('email')}
@@ -114,8 +120,11 @@ export function ResetPasswordPage() {
           })}
         >
           <div>
-            <label className='text-xs font-medium text-slate-700'>Email</label>
+            <label htmlFor='reset_password_email' className='text-xs font-medium text-slate-700'>
+              Email
+            </label>
             <input
+              id='reset_password_email'
               type='email'
               autoComplete='email'
               {...resetForm.register('email')}
@@ -127,8 +136,11 @@ export function ResetPasswordPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>Code</label>
+            <label htmlFor='reset_password_code' className='text-xs font-medium text-slate-700'>
+              Code
+            </label>
             <input
+              id='reset_password_code'
               {...resetForm.register('code')}
               className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
             />
@@ -138,8 +150,14 @@ export function ResetPasswordPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>New password</label>
+            <label
+              htmlFor='reset_password_new_password'
+              className='text-xs font-medium text-slate-700'
+            >
+              New password
+            </label>
             <input
+              id='reset_password_new_password'
               type='password'
               autoComplete='new-password'
               {...resetForm.register('newPassword')}

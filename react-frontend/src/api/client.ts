@@ -29,6 +29,10 @@ function buildLoginRedirectUrl(normalizedPath: string): string {
   return `${loginPath}?returnUrl=${encodeURIComponent(currentFullPath)}`
 }
 
+export const navigation = {
+  assign: (url: string) => window.location.assign(url),
+}
+
 export function getApiErrorMessage(error: unknown): string {
   const axiosError = error as AxiosError<ApiErrorData> | null
   const apiMessage = axiosError?.response?.data?.message
@@ -67,7 +71,7 @@ apiClient.interceptors.response.use(
     if ((status === 401 || status === 403) && typeof window !== 'undefined') {
       clearTokenForPath(normalizedPath)
       const redirectUrl = buildLoginRedirectUrl(normalizedPath)
-      window.location.assign(redirectUrl)
+      navigation.assign(redirectUrl)
     }
 
     return Promise.reject(error)

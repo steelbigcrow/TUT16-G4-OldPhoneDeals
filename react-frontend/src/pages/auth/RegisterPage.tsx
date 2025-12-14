@@ -56,8 +56,11 @@ export function RegisterPage() {
       >
         <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
           <div>
-            <label className='text-xs font-medium text-slate-700'>First name</label>
+            <label htmlFor='register_first_name' className='text-xs font-medium text-slate-700'>
+              First name
+            </label>
             <input
+              id='register_first_name'
               {...form.register('firstName')}
               className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
             />
@@ -69,8 +72,11 @@ export function RegisterPage() {
           </div>
 
           <div>
-            <label className='text-xs font-medium text-slate-700'>Last name</label>
+            <label htmlFor='register_last_name' className='text-xs font-medium text-slate-700'>
+              Last name
+            </label>
             <input
+              id='register_last_name'
               {...form.register('lastName')}
               className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
             />
@@ -83,8 +89,11 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className='text-xs font-medium text-slate-700'>Email</label>
+          <label htmlFor='register_email' className='text-xs font-medium text-slate-700'>
+            Email
+          </label>
           <input
+            id='register_email'
             type='email'
             autoComplete='email'
             {...form.register('email')}
@@ -96,8 +105,11 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className='text-xs font-medium text-slate-700'>Password</label>
+          <label htmlFor='register_password' className='text-xs font-medium text-slate-700'>
+            Password
+          </label>
           <input
+            id='register_password'
             type='password'
             autoComplete='new-password'
             {...form.register('password')}
@@ -128,4 +140,3 @@ export function RegisterPage() {
     </div>
   )
 }
-

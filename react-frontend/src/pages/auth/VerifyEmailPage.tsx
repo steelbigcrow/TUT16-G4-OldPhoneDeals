@@ -62,8 +62,11 @@ export function VerifyEmailPage() {
         })}
       >
         <div>
-          <label className='text-xs font-medium text-slate-700'>Email</label>
+          <label htmlFor='verify_email_email' className='text-xs font-medium text-slate-700'>
+            Email
+          </label>
           <input
+            id='verify_email_email'
             type='email'
             autoComplete='email'
             {...form.register('email')}
@@ -75,8 +78,11 @@ export function VerifyEmailPage() {
         </div>
 
         <div>
-          <label className='text-xs font-medium text-slate-700'>Code</label>
+          <label htmlFor='verify_email_code' className='text-xs font-medium text-slate-700'>
+            Code
+          </label>
           <input
+            id='verify_email_code'
             {...form.register('code')}
             className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
           />
