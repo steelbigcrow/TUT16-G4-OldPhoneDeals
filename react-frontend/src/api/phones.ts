@@ -1,7 +1,7 @@
 import { apiClient } from './client'
 import type { ApiResponse, PhonesListData } from '../types/api'
 import type { PhoneBrand, PhoneListItemResponse, PhoneResponse } from '../types/phone'
-import type { ReviewPageResponse, ReviewResponse } from '../types/review'
+import type { ReviewPageResponse, ReviewResponse, SellerReviewResponse } from '../types/review'
 
 export type PhoneListQuery = {
   search?: string
@@ -85,5 +85,31 @@ export async function togglePhoneDisabled(phoneId: string, isDisabled: boolean) 
   const { data } = await apiClient.put<ApiResponse<string>>(`/phones/${phoneId}/disable`, {
     isDisabled,
   })
+  return data
+}
+
+export async function deletePhone(phoneId: string) {
+  const { data } = await apiClient.delete<ApiResponse<string>>(`/phones/${phoneId}`)
+  return data
+}
+
+export async function getSellerReviews() {
+  const { data } = await apiClient.get<ApiResponse<SellerReviewResponse[]>>('/phones/reviews/by-seller')
+  return data
+}
+
+export type ToggleReviewVisibilityRequest = {
+  isHidden: boolean
+}
+
+export async function toggleReviewVisibility(
+  phoneId: string,
+  reviewId: string,
+  request: ToggleReviewVisibilityRequest,
+) {
+  const { data } = await apiClient.patch<ApiResponse<ReviewResponse>>(
+    `/phones/${phoneId}/reviews/${reviewId}/visibility`,
+    request,
+  )
   return data
 }

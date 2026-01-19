@@ -84,3 +84,8 @@ export type AdminLogResponse = {
 }
 
 export type AdminLogPageResponse = PageResponse<AdminLogResponse>
+
+export type SalesStatsResponse = {
+  totalSales: number | null
+  totalTransactions: number | null
+}

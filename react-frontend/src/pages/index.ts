@@ -14,6 +14,7 @@ export { ProfileLayoutPage } from './profile/ProfileLayoutPage'
 export { ProfileHomePage } from './profile/ProfileHomePage'
 export { ProfileListingsPage } from './profile/ProfileListingsPage'
 export { ProfileSettingsPage } from './profile/ProfileSettingsPage'
+export { ProfileReviewsPage } from './profile/ProfileReviewsPage'
 
 export { AdminLoginPage } from './admin/AdminLoginPage'
 export { AdminLayoutPage } from './admin/AdminLayoutPage'

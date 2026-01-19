@@ -15,8 +15,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.IOException;
 
@@ -32,9 +30,6 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
-
-    @Mock
-    private CustomUserDetailsService userDetailsService;
 
     @Mock
     private FilterChain filterChain;
@@ -59,13 +54,10 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("valid-token")).thenReturn("user-id-1");
         when(jwtTokenProvider.getEmailFromToken("valid-token")).thenReturn("user@example.com");
-
-        UserDetails userDetails = User.withUsername("user@example.com")
-            .password("password")
-            .roles("USER")
-            .build();
-        when(userDetailsService.loadUserByUsername("user@example.com")).thenReturn(userDetails);
+        when(jwtTokenProvider.getRoleFromToken("valid-token")).thenReturn("USER");
+        when(jwtTokenProvider.getIsAdminFromToken("valid-token")).thenReturn(false);
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -73,7 +65,11 @@ class JwtAuthenticationFilterTest {
             (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
 
         assertNotNull(authentication);
-        assertEquals(userDetails, authentication.getPrincipal());
+        assertTrue(authentication.getPrincipal() instanceof UserPrincipal);
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        assertEquals("user-id-1", principal.getUserId());
+        assertEquals("user@example.com", principal.getEmail());
+        assertEquals("user-id-1", authentication.getName());
         verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
     }
 

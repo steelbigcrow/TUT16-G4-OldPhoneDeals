@@ -12,8 +12,19 @@ const requestSchema = z.object({
 
 const resetSchema = z.object({
   email: z.string().trim().email(),
-  code: z.string().trim().min(1, 'Code is required'),
-  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  // Backend expects a 6-digit numeric reset code.
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Code must be a 6-digit number'),
+  // Backend enforces a stronger password policy.
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
+      'Password must include uppercase, lowercase, number, and special character',
+    ),
 })
 
 type RequestValues = z.infer<typeof requestSchema>

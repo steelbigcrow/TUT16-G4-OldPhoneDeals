@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getApiErrorMessage } from '../../api'
 import {
   useCreatePhone,
+  useDeletePhone,
   useProfile,
   useSellerPhones,
   useTogglePhoneDisabled,
@@ -50,6 +51,7 @@ export function ProfileListingsPage() {
   const sellerPhones = useSellerPhones(sellerId)
   const createPhone = useCreatePhone()
   const toggleDisabled = useTogglePhoneDisabled(sellerId)
+  const deletePhone = useDeletePhone(sellerId)
   const uploadImage = useUploadImage()
 
   const form = useForm<CreateValues>({
@@ -325,6 +327,23 @@ export function ProfileListingsPage() {
                           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50 disabled:opacity-50'
                         >
                           Toggle disabled
+                        </button>
+                        <button
+                          type='button'
+                          disabled={deletePhone.isPending}
+                          onClick={async () => {
+                            if (!confirm(`Delete listing "${p.title}"? This cannot be undone.`)) return
+                            try {
+                              const res = await deletePhone.mutateAsync(p.id)
+                              if (res.success) notifications.info('Listing deleted')
+                              else notifications.error(res.message ?? 'Failed to delete listing')
+                            } catch (err) {
+                              notifications.error(getApiErrorMessage(err))
+                            }
+                          }}
+                          className='rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50'
+                        >
+                          Delete
                         </button>
                       </div>
                     </div>

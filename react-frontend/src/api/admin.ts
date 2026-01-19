@@ -7,6 +7,7 @@ import type {
   AdminLogResponse,
   OrderManagementResponse,
   PhoneManagementResponse,
+  SalesStatsResponse,
   UserManagementResponse,
 } from '../types/admin'
 import type { PhoneBrand } from '../types/phone'
@@ -83,6 +84,11 @@ export async function toggleAdminPhoneDisabled(phoneId: string) {
   return data
 }
 
+export async function deleteAdminPhone(phoneId: string) {
+  const { data } = await apiClient.delete<ApiResponse<void>>(`/admin/phones/${phoneId}`)
+  return data
+}
+
 export async function getAdminReviews(params: {
   page: number
   pageSize: number
@@ -125,6 +131,11 @@ export async function getAdminOrders(params: {
     '/admin/orders',
     { params },
   )
+  return data
+}
+
+export async function getAdminSalesStats() {
+  const { data } = await apiClient.get<ApiResponse<SalesStatsResponse>>('/admin/orders/stats')
   return data
 }
 

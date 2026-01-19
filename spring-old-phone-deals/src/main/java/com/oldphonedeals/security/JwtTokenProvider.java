@@ -141,6 +141,30 @@ public class JwtTokenProvider {
   }
 
   /**
+   * Extract user role from token claims.
+   */
+  public String getRoleFromToken(String token) {
+    Claims claims = parseToken(token);
+    String role = claims.get("role", String.class);
+    return (role == null || role.isBlank()) ? "USER" : role;
+  }
+
+  /**
+   * Extract isAdmin flag from token claims (kept for backwards compatibility).
+   */
+  public boolean getIsAdminFromToken(String token) {
+    Claims claims = parseToken(token);
+    Object raw = claims.get("isAdmin");
+    if (raw instanceof Boolean b) {
+      return b;
+    }
+    if (raw instanceof String s) {
+      return Boolean.parseBoolean(s);
+    }
+    return false;
+  }
+
+  /**
    * 验证 Token 的有效性
    * <p>
    * 检查 Token 的签名、过期时间等。如果 Token 无效、过期或被篡改，

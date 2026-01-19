@@ -1,6 +1,11 @@
 import { Fragment, useState } from 'react'
 import { getApiErrorMessage } from '../../api'
-import { useAdminPhones, useToggleAdminPhoneDisabled, useUpdateAdminPhone } from '../../hooks'
+import {
+  useAdminPhones,
+  useDeleteAdminPhone,
+  useToggleAdminPhoneDisabled,
+  useUpdateAdminPhone,
+} from '../../hooks'
 import { useNotifications } from '../../contexts/NotificationContext'
 import { resolveImageUrl } from '../../utils/images'
 import type { PhoneBrand } from '../../types/phone'
@@ -39,6 +44,7 @@ export function AdminPhonesPage() {
   const query = useAdminPhones({ pageIndex, pageSize })
   const toggle = useToggleAdminPhoneDisabled()
   const update = useUpdateAdminPhone()
+  const remove = useDeleteAdminPhone()
 
   const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<EditValues | null>(null)
@@ -152,6 +158,23 @@ export function AdminPhonesPage() {
                           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50'
                         >
                           {editingPhoneId === p.id ? 'Close' : 'Edit'}
+                        </button>
+                        <button
+                          type='button'
+                          disabled={remove.isPending}
+                          onClick={async () => {
+                            if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return
+                            try {
+                              const res = await remove.mutateAsync(p.id)
+                              if (res.success) notifications.info('Phone deleted')
+                              else notifications.error(res.message ?? 'Failed to delete phone')
+                            } catch (err) {
+                              notifications.error(getApiErrorMessage(err))
+                            }
+                          }}
+                          className='rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50'
+                        >
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -320,4 +343,3 @@ export function AdminPhonesPage() {
     </div>
   )
 }
-

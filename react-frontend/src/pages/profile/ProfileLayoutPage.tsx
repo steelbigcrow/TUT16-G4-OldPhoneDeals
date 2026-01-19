@@ -29,6 +29,12 @@ export function ProfileLayoutPage() {
             Listings
           </NavLink>
           <NavLink
+            to='/profile/reviews'
+            className={({ isActive }) => cn(navLinkBase, isActive && 'bg-slate-100 font-medium')}
+          >
+            Reviews
+          </NavLink>
+          <NavLink
             to='/profile/settings'
             className={({ isActive }) => cn(navLinkBase, isActive && 'bg-slate-100 font-medium')}
           >

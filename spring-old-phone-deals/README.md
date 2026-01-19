@@ -38,7 +38,14 @@ cd spring-old-phone-deals
 
 ```env
 # MongoDB 连接
-MONGODB_URI=mongodb://localhost:27017/oldphonedeals
+MONGODB_URI_DEV=mongodb://localhost:27017/oldphonedeals-dev
+MONGODB_URI_PROD=mongodb://localhost:27017/OldPhoneDeals
+
+# (optional) legacy/fallback key used by prod if MONGODB_URI_PROD is not set
+# MONGODB_URI=mongodb://localhost:27017/OldPhoneDeals
+
+# Logging (optional, useful on Windows to avoid /var/log paths in prod profile)
+# LOG_FILE_NAME=./logs/application.log
 
 # JWT 配置
 JWT_SECRET=your-super-secret-jwt-key-min-256-bits
@@ -53,6 +60,8 @@ FRONTEND_URL=http://localhost:5173
 # 运行环境(development/production)
 NODE_ENV=development
 ```
+
+Note: `.env` is loaded via Spring Boot config import (see `src/main/resources/application.yml`).
 
 **注意**: 
 - `.env` 已加入 `.gitignore`，不要提交真实密钥。

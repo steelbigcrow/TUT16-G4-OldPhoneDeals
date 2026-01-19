@@ -32,7 +32,13 @@ public class UpdateProfileRequest {
     @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
     private String lastName;
 
-    @NotBlank(message = "Email is required")
+    /**
+     * Email is optional for name-only profile updates.
+     * <p>
+     * When provided, it must be a valid email address. Additional rules (like requiring
+     * currentPassword when changing email) are enforced in the service layer.
+     * </p>
+     */
     @Email(message = "Email must be a valid email address")
     private String email;
 

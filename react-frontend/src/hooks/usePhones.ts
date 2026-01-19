@@ -90,3 +90,39 @@ export function useTogglePhoneDisabled(sellerId: string) {
     },
   })
 }
+
+export function useDeletePhone(sellerId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (phoneId: string) => phonesApi.deletePhone(phoneId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['phones'] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.phones.bySeller(sellerId) })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wishlist })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cart })
+    },
+  })
+}
+
+export function useSellerReviews(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.phones.sellerReviews,
+    queryFn: () => phonesApi.getSellerReviews(),
+    enabled: options?.enabled ?? true,
+  })
+}
+
+export function useToggleSellerReviewVisibility() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (args: { phoneId: string; reviewId: string; isHidden: boolean }) =>
+      phonesApi.toggleReviewVisibility(args.phoneId, args.reviewId, { isHidden: args.isHidden }),
+    onSuccess: async (_res, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.phones.sellerReviews })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.phones.detail(variables.phoneId) })
+      await queryClient.invalidateQueries({ queryKey: ['reviews'] })
+    },
+  })
+}

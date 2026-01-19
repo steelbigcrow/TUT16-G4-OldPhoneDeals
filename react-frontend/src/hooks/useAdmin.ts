@@ -73,6 +73,19 @@ export function useUpdateAdminPhone() {
   })
 }
 
+export function useDeleteAdminPhone() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (phoneId: string) => adminApi.deleteAdminPhone(phoneId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'phones'] })
+      await queryClient.invalidateQueries({ queryKey: ['phones'] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wishlist })
+    },
+  })
+}
+
 export function useAdminReviews(params: {
   pageIndex: number
   pageSize: number
@@ -144,6 +157,14 @@ export function useAdminOrders(params: {
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
       }),
+  })
+}
+
+export function useAdminSalesStats(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['admin', 'orders', 'stats'],
+    queryFn: () => adminApi.getAdminSalesStats(),
+    enabled: options?.enabled ?? true,
   })
 }
 

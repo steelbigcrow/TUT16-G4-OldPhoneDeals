@@ -84,17 +84,16 @@ describe('ResetPasswordPage', () => {
 
     await user.type(within(resetSection).getByLabelText('Email'), 'user@example.com')
     await user.type(within(resetSection).getByLabelText('Code'), '123456')
-    await user.type(within(resetSection).getByLabelText('New password'), 'newsecret')
+    await user.type(within(resetSection).getByLabelText('New password'), 'NewSecret1!')
     await user.click(within(resetSection).getByRole('button', { name: 'Reset password' }))
 
     expect(resetPasswordMock).toHaveBeenCalledWith({
       email: 'user@example.com',
       code: '123456',
-      newPassword: 'newsecret',
+      newPassword: 'NewSecret1!',
     })
 
     expect(await screen.findByText('Password reset. Please log in.')).toBeInTheDocument()
     expect(await screen.findByText('Login page')).toBeInTheDocument()
   })
 })
-

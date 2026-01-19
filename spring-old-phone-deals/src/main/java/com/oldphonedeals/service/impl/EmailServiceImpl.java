@@ -10,6 +10,9 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 /**
  * 邮件发送服务实现类
  */
@@ -34,7 +37,10 @@ public class EmailServiceImpl implements EmailService {
     public void sendVerificationEmail(String toEmail, String verifyToken, String userName) {
         log.info("Sending verification email to: {}", toEmail);
         String subject = "Verify Your Email - Old Phone Deals";
-        String verifyUrl = frontendUrl + "/verify-email?token=" + verifyToken;
+        String verifyUrl =
+            frontendUrl
+                + "/verify-email?email=" + URLEncoder.encode(toEmail, StandardCharsets.UTF_8)
+                + "&token=" + URLEncoder.encode(verifyToken, StandardCharsets.UTF_8);
         
         String htmlContent = buildVerificationEmailContent(userName, verifyUrl);
         sendEmail(toEmail, subject, htmlContent);
@@ -45,7 +51,10 @@ public class EmailServiceImpl implements EmailService {
     public void sendPasswordResetEmail(String toEmail, String resetToken, String userName) {
         log.info("Sending password reset email to: {}", toEmail);
         String subject = "Reset Your Password - Old Phone Deals";
-        String resetUrl = frontendUrl + "/reset-password?token=" + resetToken;
+        String resetUrl =
+            frontendUrl
+                + "/reset-password?email=" + URLEncoder.encode(toEmail, StandardCharsets.UTF_8)
+                + "&token=" + URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
         
         String htmlContent = buildPasswordResetEmailContent(userName, resetUrl);
         sendEmail(toEmail, subject, htmlContent);

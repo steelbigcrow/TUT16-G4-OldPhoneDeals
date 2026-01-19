@@ -19,6 +19,7 @@ import {
   ProfileHomePage,
   ProfileLayoutPage,
   ProfileListingsPage,
+  ProfileReviewsPage,
   ProfileSettingsPage,
   RegisterPage,
   ResetPasswordPage,
@@ -94,6 +95,10 @@ export const router = createBrowserRouter([
               {
                 path: 'listings',
                 element: <ProfileListingsPage />,
+              },
+              {
+                path: 'reviews',
+                element: <ProfileReviewsPage />,
               },
               {
                 path: '*',

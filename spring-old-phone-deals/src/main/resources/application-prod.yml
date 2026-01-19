@@ -2,7 +2,7 @@ spring:
   data:
     mongodb:
       # 生产环境必须通过环境变量配置
-      uri: ${MONGODB_URI}
+      uri: ${MONGODB_URI_PROD:${MONGODB_URI:mongodb://localhost:27017/OldPhoneDeals}}
   
   mail:
     host: smtp.sendgrid.net
@@ -29,7 +29,7 @@ logging:
     com.oldphonedeals: INFO
     org.springframework.security: WARN
   file:
-    name: /var/log/oldphonedeals/application.log
+    name: ${LOG_FILE_NAME:/var/log/oldphonedeals/application.log}
     max-size: 100MB
     max-history: 30
 

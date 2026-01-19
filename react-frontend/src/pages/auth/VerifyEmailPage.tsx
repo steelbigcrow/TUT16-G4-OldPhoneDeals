@@ -9,7 +9,8 @@ import { useNotifications } from '../../contexts/NotificationContext'
 
 const schema = z.object({
   email: z.string().trim().email(),
-  code: z.string().trim().min(1, 'Code is required'),
+  // Backend expects a verification token (UUID) generated at registration time.
+  token: z.string().trim().min(1, 'Code is required'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -20,16 +21,20 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
 
   const prefillEmail = useMemo(() => searchParams.get('email') ?? '', [searchParams])
+  const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
 
   const form = useForm<FormValues>({
-    defaultValues: { email: prefillEmail, code: '' },
+    defaultValues: { email: prefillEmail, token: prefillToken },
   })
 
   useEffect(() => {
     if (prefillEmail) {
       form.setValue('email', prefillEmail)
     }
-  }, [prefillEmail, form])
+    if (prefillToken) {
+      form.setValue('token', prefillToken)
+    }
+  }, [prefillEmail, prefillToken, form])
 
   return (
     <div className='mx-auto max-w-md space-y-6'>
@@ -83,11 +88,11 @@ export function VerifyEmailPage() {
           </label>
           <input
             id='verify_email_code'
-            {...form.register('code')}
+            {...form.register('token')}
             className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
           />
-          {form.formState.errors.code?.message ? (
-            <div className='mt-1 text-xs text-rose-700'>{form.formState.errors.code.message}</div>
+          {form.formState.errors.token?.message ? (
+            <div className='mt-1 text-xs text-rose-700'>{form.formState.errors.token.message}</div>
           ) : null}
         </div>
 

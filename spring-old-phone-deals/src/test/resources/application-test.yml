@@ -4,7 +4,7 @@ spring:
   data:
     mongodb:
       # 使用内存数据库进行测试
-      uri: mongodb://localhost:27017/oldphonedeals-test
+      uri: ${MONGODB_URI_TEST:mongodb://localhost:27017/oldphonedeals-test}
   
   # 测试环境邮件配置（使用假邮件服务）
   mail:

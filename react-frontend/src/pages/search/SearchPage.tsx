@@ -42,6 +42,8 @@ export function SearchPage() {
   const page = Math.max(1, parseNumber(searchParams.get('page')) ?? 1)
   const limit = Math.min(24, Math.max(1, parseNumber(searchParams.get('limit')) ?? 12))
 
+  const sortValue = `${searchParams.get('sortBy') ?? ''}:${searchParams.get('sortOrder') ?? ''}`
+
   const params = useMemo(
     () => ({
       search: searchParams.get('search') ?? undefined,
@@ -85,7 +87,7 @@ export function SearchPage() {
       </div>
 
       <form
-        className='grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-6'
+        className='grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-12'
         onSubmit={(e) => {
           e.preventDefault()
           const next = new URLSearchParams(searchParams)
@@ -95,7 +97,7 @@ export function SearchPage() {
           setSearchParams(next)
         }}
       >
-        <div className='md:col-span-3'>
+        <div className='md:col-span-5'>
           <label className='text-xs font-medium text-slate-700'>Search</label>
           <input
             value={searchDraft}
@@ -105,7 +107,7 @@ export function SearchPage() {
           />
         </div>
 
-        <div className='md:col-span-1'>
+        <div className='md:col-span-2'>
           <label className='text-xs font-medium text-slate-700'>Brand</label>
           <select
             value={searchParams.get('brand') ?? ''}
@@ -127,7 +129,7 @@ export function SearchPage() {
           </select>
         </div>
 
-        <div className='md:col-span-1'>
+        <div className='md:col-span-2'>
           <label className='text-xs font-medium text-slate-700'>Max price</label>
           <input
             inputMode='numeric'
@@ -142,6 +144,35 @@ export function SearchPage() {
             placeholder='500'
             className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
           />
+        </div>
+
+        <div className='md:col-span-2'>
+          <label className='text-xs font-medium text-slate-700'>Sort</label>
+          <select
+            value={sortValue}
+            onChange={(e) => {
+              const next = new URLSearchParams(searchParams)
+              const [sortBy, sortOrder] = String(e.target.value).split(':')
+              if (!sortBy) {
+                next.delete('sortBy')
+                next.delete('sortOrder')
+              } else {
+                next.set('sortBy', sortBy)
+                next.set('sortOrder', sortOrder === 'asc' ? 'asc' : 'desc')
+              }
+              next.set('page', '1')
+              setSearchParams(next)
+            }}
+            className='mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200'
+          >
+            <option value=':'>Default</option>
+            <option value='createdAt:desc'>Newest</option>
+            <option value='createdAt:asc'>Oldest</option>
+            <option value='price:asc'>Price: low to high</option>
+            <option value='price:desc'>Price: high to low</option>
+            <option value='stock:asc'>Stock: low to high</option>
+            <option value='stock:desc'>Stock: high to low</option>
+          </select>
         </div>
 
         <div className='md:col-span-1 flex items-end'>

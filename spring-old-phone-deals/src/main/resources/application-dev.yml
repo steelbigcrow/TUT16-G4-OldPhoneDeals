@@ -2,7 +2,7 @@ spring:
   # 开发环境 MongoDB（可使用单独的 dev 库）
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/oldphonedeals-dev}
+      uri: ${MONGODB_URI_DEV:mongodb://localhost:27017/oldphonedeals-dev}
   
   # 开发环境邮件（通常使用沙箱服务）
   mail:

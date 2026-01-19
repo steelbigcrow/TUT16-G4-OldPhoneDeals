@@ -53,6 +53,7 @@ export const queryKeys = {
     reviews: (phoneId: string, params: { page: number; limit: number }) =>
       ['reviews', phoneId, params] as const,
     bySeller: (sellerId: string) => ['phones', 'seller', sellerId] as const,
+    sellerReviews: ['phones', 'seller', 'reviews'] as const,
   },
   wishlist: ['wishlist'] as const,
   cart: ['cart'] as const,

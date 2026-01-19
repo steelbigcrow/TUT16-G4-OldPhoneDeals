@@ -50,7 +50,7 @@ describe('VerifyEmailPage', () => {
     await user.type(screen.getByLabelText('Code'), '123456')
     await user.click(screen.getByRole('button', { name: 'Verify' }))
 
-    expect(verifyEmailMock).toHaveBeenCalledWith({ email: 'user@example.com', code: '123456' })
+    expect(verifyEmailMock).toHaveBeenCalledWith({ email: 'user@example.com', token: '123456' })
     expect(await screen.findByText(/Email verified/i)).toBeInTheDocument()
     expect(await screen.findByText('Login page')).toBeInTheDocument()
   })
@@ -85,4 +85,3 @@ describe('VerifyEmailPage', () => {
     expect(await screen.findByText('Verification email resent')).toBeInTheDocument()
   })
 })
-

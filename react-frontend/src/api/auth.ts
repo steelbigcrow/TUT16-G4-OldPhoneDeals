@@ -20,7 +20,7 @@ export type RegisterRequest = {
 
 export type VerifyEmailRequest = {
   email: string
-  code: string
+  token: string
 }
 
 export type ResendVerificationRequest = {
