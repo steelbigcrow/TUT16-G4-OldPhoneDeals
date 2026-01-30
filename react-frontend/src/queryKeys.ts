@@ -8,15 +8,15 @@ export const queryKeys = {
     profile: ['admin', 'profile'] as const,
     stats: ['admin', 'stats'] as const,
     users: (params: {
-      pageIndex: number
+      page: number
       pageSize: number
       search?: string
       isDisabled?: boolean
     }) => ['admin', 'users', params] as const,
-    phones: (params: { pageIndex: number; pageSize: number }) =>
+    phones: (params: { page: number; pageSize: number }) =>
       ['admin', 'phones', params] as const,
     reviews: (params: {
-      pageIndex: number
+      page: number
       pageSize: number
       visibility?: boolean
       reviewerId?: string
@@ -24,7 +24,7 @@ export const queryKeys = {
       search?: string
     }) => ['admin', 'reviews', params] as const,
     orders: (params: {
-      pageIndex: number
+      page: number
       pageSize: number
       userId?: string
       startDate?: string
@@ -34,7 +34,7 @@ export const queryKeys = {
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
     }) => ['admin', 'orders', params] as const,
-    logs: (params: { pageIndex: number; pageSize: number }) =>
+    logs: (params: { page: number; pageSize: number }) =>
       ['admin', 'logs', params] as const,
   },
   phones: {

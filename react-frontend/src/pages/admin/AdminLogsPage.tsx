@@ -10,10 +10,10 @@ function formatDate(value: string | null | undefined) {
 }
 
 export function AdminLogsPage() {
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageNumber, setPageNumber] = useState(1)
   const [pageSize] = useState(10)
 
-  const query = useAdminLogs({ pageIndex, pageSize })
+  const query = useAdminLogs({ page: pageNumber, pageSize })
   const page = query.data?.success ? query.data.data : undefined
   const logs = page?.content ?? []
 
@@ -77,16 +77,16 @@ export function AdminLogsPage() {
       <div className='flex items-center justify-between'>
         <button
           type='button'
-          disabled={pageIndex <= 0}
-          onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Previous
         </button>
         <button
           type='button'
-          disabled={pageIndex + 1 >= (page?.totalPages ?? 1)}
-          onClick={() => setPageIndex((p) => p + 1)}
+          disabled={pageNumber >= (page?.totalPages ?? 1)}
+          onClick={() => setPageNumber((p) => p + 1)}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Next
@@ -95,4 +95,3 @@ export function AdminLogsPage() {
     </div>
   )
 }
-

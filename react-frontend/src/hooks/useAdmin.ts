@@ -11,7 +11,7 @@ export function useAdminStats(options?: { enabled?: boolean }) {
 }
 
 export function useAdminUsers(params: {
-  pageIndex: number
+  page: number
   pageSize: number
   search?: string
   isDisabled?: boolean
@@ -20,7 +20,7 @@ export function useAdminUsers(params: {
     queryKey: queryKeys.admin.users(params),
     queryFn: () =>
       adminApi.getAdminUsers({
-        page: params.pageIndex,
+        page: params.page,
         pageSize: params.pageSize,
         search: params.search,
         isDisabled: params.isDisabled,
@@ -39,12 +39,12 @@ export function useToggleAdminUserDisabled() {
   })
 }
 
-export function useAdminPhones(params: { pageIndex: number; pageSize: number }) {
+export function useAdminPhones(params: { page: number; pageSize: number }) {
   return useQuery({
     queryKey: queryKeys.admin.phones(params),
     queryFn: () =>
       adminApi.getAdminPhones({
-        page: params.pageIndex,
+        page: params.page,
         pageSize: params.pageSize,
       }),
   })
@@ -87,7 +87,7 @@ export function useDeleteAdminPhone() {
 }
 
 export function useAdminReviews(params: {
-  pageIndex: number
+  page: number
   pageSize: number
   visibility?: boolean
   reviewerId?: string
@@ -98,7 +98,7 @@ export function useAdminReviews(params: {
     queryKey: queryKeys.admin.reviews(params),
     queryFn: () =>
       adminApi.getAdminReviews({
-        page: params.pageIndex,
+        page: params.page,
         pageSize: params.pageSize,
         visibility: params.visibility,
         reviewerId: params.reviewerId,
@@ -133,7 +133,7 @@ export function useDeleteAdminReview() {
 }
 
 export function useAdminOrders(params: {
-  pageIndex: number
+  page: number
   pageSize: number
   userId?: string
   startDate?: string
@@ -147,7 +147,7 @@ export function useAdminOrders(params: {
     queryKey: queryKeys.admin.orders(params),
     queryFn: () =>
       adminApi.getAdminOrders({
-        page: params.pageIndex,
+        page: params.page,
         pageSize: params.pageSize,
         userId: params.userId,
         startDate: params.startDate,
@@ -168,12 +168,12 @@ export function useAdminSalesStats(options?: { enabled?: boolean }) {
   })
 }
 
-export function useAdminLogs(params: { pageIndex: number; pageSize: number }) {
+export function useAdminLogs(params: { page: number; pageSize: number }) {
   return useQuery({
     queryKey: queryKeys.admin.logs(params),
     queryFn: () =>
       adminApi.getAdminLogs({
-        page: params.pageIndex,
+        page: params.page,
         pageSize: params.pageSize,
       }),
   })

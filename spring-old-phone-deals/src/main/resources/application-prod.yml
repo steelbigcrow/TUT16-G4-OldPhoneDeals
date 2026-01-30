@@ -40,4 +40,4 @@ frontend:
 # 生产环境文件上传
 file:
   upload:
-    dir: ${UPLOAD_DIR:/var/www/oldphonedeals/uploads/images}
+    dir: ${UPLOAD_DIR:/var/www/oldphonedeals/uploads}

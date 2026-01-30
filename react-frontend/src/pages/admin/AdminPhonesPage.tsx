@@ -38,10 +38,10 @@ function formatPrice(price: number | null | undefined) {
 export function AdminPhonesPage() {
   const notifications = useNotifications()
 
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageNumber, setPageNumber] = useState(1)
   const [pageSize] = useState(10)
 
-  const query = useAdminPhones({ pageIndex, pageSize })
+  const query = useAdminPhones({ page: pageNumber, pageSize })
   const toggle = useToggleAdminPhoneDisabled()
   const update = useUpdateAdminPhone()
   const remove = useDeleteAdminPhone()
@@ -325,16 +325,16 @@ export function AdminPhonesPage() {
       <div className='flex items-center justify-between'>
         <button
           type='button'
-          disabled={pageIndex <= 0}
-          onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Previous
         </button>
         <button
           type='button'
-          disabled={pageIndex + 1 >= (page?.totalPages ?? 1)}
-          onClick={() => setPageIndex((p) => p + 1)}
+          disabled={pageNumber >= (page?.totalPages ?? 1)}
+          onClick={() => setPageNumber((p) => p + 1)}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Next

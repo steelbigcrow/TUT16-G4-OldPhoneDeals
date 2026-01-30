@@ -18,7 +18,7 @@ function formatPrice(price: number | null | undefined) {
 
 export function AdminOrdersPage() {
   const notifications = useNotifications()
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageNumber, setPageNumber] = useState(1)
   const [pageSize] = useState(10)
 
   const [searchDraft, setSearchDraft] = useState('')
@@ -84,7 +84,7 @@ export function AdminOrdersPage() {
   }, [filterSchema, searchDraft, brandFilter, startDate, endDate, sortOption])
 
   const query = useAdminOrders({
-    pageIndex,
+    page: pageNumber,
     pageSize,
     searchTerm: parsedFilters.searchTerm,
     brandFilter: parsedFilters.brandFilter,
@@ -183,7 +183,7 @@ export function AdminOrdersPage() {
           <div className='flex flex-wrap items-center gap-2'>
             <button
               type='button'
-              onClick={() => setPageIndex(0)}
+              onClick={() => setPageNumber(1)}
               className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50'
             >
               Apply
@@ -197,7 +197,7 @@ export function AdminOrdersPage() {
                 setStartDate('')
                 setEndDate('')
                 setSortOption('createdAt:desc')
-                setPageIndex(0)
+                setPageNumber(1)
               }}
               className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50'
             >
@@ -367,16 +367,16 @@ export function AdminOrdersPage() {
       <div className='flex items-center justify-between'>
         <button
           type='button'
-          disabled={pageIndex <= 0}
-          onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Previous
         </button>
         <button
           type='button'
-          disabled={pageIndex + 1 >= (page?.totalPages ?? 1)}
-          onClick={() => setPageIndex((p) => p + 1)}
+          disabled={pageNumber >= (page?.totalPages ?? 1)}
+          onClick={() => setPageNumber((p) => p + 1)}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Next

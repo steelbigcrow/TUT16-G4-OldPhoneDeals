@@ -91,18 +91,23 @@ public class AdminController {
 
     /**
      * 获取所有用户（分页，支持搜索和过滤）
-     * GET /api/admin/users?page=0&pageSize=10&search=john&isDisabled=false
+     * GET /api/admin/users?page=1&pageSize=10&search=john&isDisabled=false
      */
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<UserManagementResponse>>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isDisabled) {
-        PageResponse<UserManagementResponse> response = adminService.getAllUsers(page, pageSize, search, isDisabled);
+        if (page < 0 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<UserManagementResponse> response = adminService.getAllUsers(zeroBasedPage, pageSize, search, isDisabled);
         if (response == null) {
-            response = adminService.getAllUsers(page, pageSize);
+            response = adminService.getAllUsers(zeroBasedPage, pageSize);
         }
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -170,10 +175,11 @@ public class AdminController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder,
             @RequestParam(required = false) String brand) {
-        if (page < 1 || pageSize < 1) {
+        if (page < 0 || pageSize < 1) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
         }
-        PageResponse<AdminUserPhoneResponse> response = adminService.getUserPhones(userId, page - 1, pageSize, sortBy, sortOrder, brand);
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<AdminUserPhoneResponse> response = adminService.getUserPhones(userId, zeroBasedPage, pageSize, sortBy, sortOrder, brand);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -190,10 +196,11 @@ public class AdminController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder,
             @RequestParam(required = false) String brand) {
-        if (page < 1 || pageSize < 1) {
+        if (page < 0 || pageSize < 1) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
         }
-        PageResponse<AdminUserReviewResponse> response = adminService.getUserReviews(userId, page - 1, pageSize, sortBy, sortOrder, brand);
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<AdminUserReviewResponse> response = adminService.getUserReviews(userId, zeroBasedPage, pageSize, sortBy, sortOrder, brand);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -208,9 +215,13 @@ public class AdminController {
     @GetMapping("/phones")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<PhoneManagementResponse>>> getAllPhones(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
-        PageResponse<PhoneManagementResponse> response = adminService.getAllPhonesForAdmin(page, pageSize);
+        if (page < 0 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<PhoneManagementResponse> response = adminService.getAllPhonesForAdmin(zeroBasedPage, pageSize);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -258,20 +269,24 @@ public class AdminController {
 
     /**
      * 获取所有评论（包含隐藏的，支持过滤）
-     * GET /api/admin/reviews?page=0&pageSize=10&visibility=false&reviewerId=xxx&phoneId=yyy&search=keyword
+     * GET /api/admin/reviews?page=1&pageSize=10&visibility=false&reviewerId=xxx&phoneId=yyy&search=keyword
      */
     @GetMapping("/reviews")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ReviewManagementResponse>>> getAllReviews(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) Boolean visibility,
             @RequestParam(required = false) String reviewerId,
             @RequestParam(required = false) String phoneId,
             @RequestParam(required = false) String search) {
-        PageResponse<ReviewManagementResponse> response = adminService.getAllReviews(page, pageSize, visibility, reviewerId, phoneId, search);
+        if (page < 0 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<ReviewManagementResponse> response = adminService.getAllReviews(zeroBasedPage, pageSize, visibility, reviewerId, phoneId, search);
         if (response == null) {
-            response = adminService.getAllReviews(page, pageSize);
+            response = adminService.getAllReviews(zeroBasedPage, pageSize);
         }
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -332,12 +347,12 @@ public class AdminController {
 
     /**
      * 获取所有订单（分页，支持过滤）
-     * GET /api/admin/orders?page=0&pageSize=10&userId=xxx&startDate=2024-01-01T00:00:00&endDate=2024-12-31T23:59:59
+     * GET /api/admin/orders?page=1&pageSize=10&userId=xxx&startDate=2024-01-01T00:00:00&endDate=2024-12-31T23:59:59
      */
     @GetMapping("/orders")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<OrderManagementResponse>>> getAllOrders(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String startDate,
@@ -350,8 +365,9 @@ public class AdminController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
         }
         try {
+            int zeroBasedPage = normalizeToZeroBasedPage(page);
             PageResponse<OrderManagementResponse> response = adminService.getAllOrders(
-                    page, pageSize, userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
+                    zeroBasedPage, pageSize, userId, startDate, endDate, searchTerm, brandFilter, sortBy, sortOrder);
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
@@ -417,9 +433,23 @@ public class AdminController {
     @GetMapping("/logs")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AdminLogResponse>>> getAllLogs(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
-        PageResponse<AdminLogResponse> response = adminLogService.getAllLogs(page, pageSize);
+        if (page < 0 || pageSize < 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid pagination parameters"));
+        }
+        int zeroBasedPage = normalizeToZeroBasedPage(page);
+        PageResponse<AdminLogResponse> response = adminLogService.getAllLogs(zeroBasedPage, pageSize);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 将请求参数中的 page 统一转换为 0-based 供服务层/Repository 使用。
+     * <p>
+     * 约定：API 层 page 以 1 为第一页；为了兼容旧调用（曾使用 0-based），page=0 仍视为第一页。
+     * </p>
+     */
+    private int normalizeToZeroBasedPage(int page) {
+        return page <= 0 ? 0 : page - 1;
     }
 }

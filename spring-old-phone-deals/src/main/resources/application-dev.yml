@@ -39,4 +39,4 @@ frontend:
 # 开发环境文件上传目录
 file:
   upload:
-    dir: ./dev-uploads/images
+    dir: ./dev-uploads

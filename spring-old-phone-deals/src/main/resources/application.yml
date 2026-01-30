@@ -58,7 +58,8 @@ frontend:
 # 文件存储
 file:
   upload:
-    dir: ${UPLOAD_DIR:./uploads/images}
+    # 上传根目录（最佳实践：不要把 images 写进 dir，images 由服务层作为子目录管理）
+    dir: ${UPLOAD_DIR:./uploads}
     max-size: 10485760  # 10MB
 
 # 日志配置

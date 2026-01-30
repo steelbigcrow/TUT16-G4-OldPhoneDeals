@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
@@ -61,7 +60,8 @@ public class FileStorageServiceImpl implements FileStorageService {
       String fileName = generateUniqueFileName(fileExtension);
 
       // 构建完整的存储路径
-      Path uploadPath = Paths.get(fileStorageProperties.getDir(), subDirectory);
+      Path uploadRoot = fileStorageProperties.resolveUploadRootDir();
+      Path uploadPath = uploadRoot.resolve(subDirectory);
 
       // 创建目录（如果不存在）
       createDirectoryIfNotExists(uploadPath);
@@ -93,7 +93,7 @@ public class FileStorageServiceImpl implements FileStorageService {
   @Override
   public void deleteFile(String fileName) {
     try {
-      Path filePath = Paths.get(fileStorageProperties.getDir()).resolve(fileName).normalize();
+      Path filePath = fileStorageProperties.resolveUploadRootDir().resolve(fileName).normalize();
 
       // 检查文件是否存在
       if (Files.exists(filePath)) {
@@ -118,9 +118,7 @@ public class FileStorageServiceImpl implements FileStorageService {
   @Override
   public Resource loadFileAsResource(String fileName) {
     try {
-      Path filePath = Paths.get(fileStorageProperties.getDir())
-          .resolve(fileName)
-          .normalize();
+      Path filePath = fileStorageProperties.resolveUploadRootDir().resolve(fileName).normalize();
 
       Resource resource = new UrlResource(filePath.toUri());
 

@@ -12,7 +12,7 @@ const filterSchema = z.object({
 export function AdminUsersPage() {
   const notifications = useNotifications()
 
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageNumber, setPageNumber] = useState(1)
   const [pageSize] = useState(10)
 
   const [searchDraft, setSearchDraft] = useState('')
@@ -29,7 +29,7 @@ export function AdminUsersPage() {
   }, [searchDraft, disabledFilter])
 
   const query = useAdminUsers({
-    pageIndex,
+    page: pageNumber,
     pageSize,
     search: parsedFilters.search,
     isDisabled: parsedFilters.isDisabled,
@@ -72,7 +72,7 @@ export function AdminUsersPage() {
         <div className='sm:col-span-6 flex items-center justify-between'>
           <button
             type='button'
-            onClick={() => setPageIndex(0)}
+            onClick={() => setPageNumber(1)}
             className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50'
           >
             Apply
@@ -157,16 +157,16 @@ export function AdminUsersPage() {
       <div className='flex items-center justify-between'>
         <button
           type='button'
-          disabled={pageIndex <= 0}
-          onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Previous
         </button>
         <button
           type='button'
-          disabled={pageIndex + 1 >= (page?.totalPages ?? 1)}
-          onClick={() => setPageIndex((p) => p + 1)}
+          disabled={pageNumber >= (page?.totalPages ?? 1)}
+          onClick={() => setPageNumber((p) => p + 1)}
           className='rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50'
         >
           Next
@@ -175,4 +175,3 @@ export function AdminUsersPage() {
     </div>
   )
 }
-

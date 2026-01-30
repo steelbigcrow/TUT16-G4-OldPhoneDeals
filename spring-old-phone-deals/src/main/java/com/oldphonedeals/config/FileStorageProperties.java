@@ -8,6 +8,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.Arrays;
 import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * 文件存储配置属性
@@ -23,7 +25,7 @@ public class FileStorageProperties {
    * 文件上传目录
    */
   @NotBlank(message = "Upload directory cannot be blank")
-  private String dir = "./uploads/images";
+  private String dir = "./uploads";
 
   /**
    * 最大文件大小（字节）
@@ -87,5 +89,31 @@ public class FileStorageProperties {
    */
   public boolean isSizeValid(long size) {
     return size > 0 && size <= maxSize;
+  }
+
+  /**
+   * 解析上传根目录（用于 /uploads/** 静态资源映射与文件系统存储）。
+   * <p>
+   * 最佳实践：{@code file.upload.dir} 应指向上传根目录（例如：{@code ./uploads}），
+   * 文件会被存储在子目录（例如：{@code images/}）下。
+   * </p>
+   *
+   * <p>
+   * 为兼容旧配置（曾使用 {@code ./uploads/images} 作为 dir），这里会自动回退到其父目录：
+   * 如果 dir 的最后一段为 {@code images}，则认为它是误把子目录写进了根目录配置。
+   * </p>
+   *
+   * @return 解析后的上传根目录 Path（可能为相对路径）
+   */
+  public Path resolveUploadRootDir() {
+    Path configured = Paths.get(dir).normalize();
+    Path last = configured.getFileName();
+    if (last != null && "images".equalsIgnoreCase(last.toString())) {
+      Path parent = configured.getParent();
+      if (parent != null) {
+        return parent.normalize();
+      }
+    }
+    return configured;
   }
 }

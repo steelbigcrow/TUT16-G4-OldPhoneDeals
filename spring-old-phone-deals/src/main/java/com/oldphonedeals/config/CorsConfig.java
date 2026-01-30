@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 
 /**
  * Web配置类
@@ -43,12 +43,13 @@ public class CorsConfig implements WebMvcConfigurer {
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
     // 映射上传的文件
-    String uploadPath = Paths.get(fileStorageProperties.getDir())
-        .toAbsolutePath()
-        .toString();
+    Path uploadRoot = fileStorageProperties.resolveUploadRootDir().toAbsolutePath().normalize();
     
     registry.addResourceHandler("/uploads/**")
-        .addResourceLocations("file:" + uploadPath + "/")
+        // 新目录结构：{uploadRoot}/images/{file}
+        .addResourceLocations("file:" + uploadRoot + "/")
+        // 兼容旧目录结构：{uploadRoot}/images/images/{file}
+        .addResourceLocations("file:" + uploadRoot.resolve("images") + "/")
         .setCachePeriod(3600); // 缓存1小时
     
     // 如果还有其他静态资源，保留classpath映射

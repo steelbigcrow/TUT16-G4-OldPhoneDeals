@@ -198,19 +198,21 @@ class AdminLogRepositoryTest {
     
     AdminLog log1 = createTestLog("admin-1", AdminAction.UPDATE_USER, 
         TargetType.USER, "user-1", "Oldest");
-    log1.setCreatedAt(now.minusDays(3));
     
     AdminLog log2 = createTestLog("admin-2", AdminAction.UPDATE_USER, 
         TargetType.USER, "user-2", "Middle");
-    log2.setCreatedAt(now.minusDays(2));
     
     AdminLog log3 = createTestLog("admin-3", AdminAction.UPDATE_USER, 
         TargetType.USER, "user-3", "Newest");
-    log3.setCreatedAt(now.minusDays(1));
 
-    adminLogRepository.save(log1);
-    adminLogRepository.save(log2);
-    adminLogRepository.save(log3);
+    // 先保存，再用 MongoTemplate 覆盖 createdAt（绕过 @CreatedDate 自动赋值）
+    AdminLog saved1 = adminLogRepository.save(log1);
+    AdminLog saved2 = adminLogRepository.save(log2);
+    AdminLog saved3 = adminLogRepository.save(log3);
+
+    updateCreatedAt(saved1.getId(), now.minusDays(3));
+    updateCreatedAt(saved2.getId(), now.minusDays(2));
+    updateCreatedAt(saved3.getId(), now.minusDays(1));
 
     Pageable pageable = PageRequest.of(0, 10);
 
