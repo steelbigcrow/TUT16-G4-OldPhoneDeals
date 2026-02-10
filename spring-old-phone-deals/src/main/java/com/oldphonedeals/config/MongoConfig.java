@@ -15,6 +15,10 @@ import org.springframework.data.mongodb.core.convert.DefaultDbRefResolver;
 import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 /**
  * MongoDB配置类
@@ -25,6 +29,9 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
   @Value("${spring.data.mongodb.uri}")
   private String mongoUri;
+
+  @Value("${app.mongo.transactions.enabled:false}")
+  private boolean mongoTransactionsEnabled;
 
   @Override
   protected String getDatabaseName() {
@@ -71,10 +78,37 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
   /**
    * 配置MongoDB事务管理器
-   * 需要MongoDB副本集支持
+   * MongoDB事务需要副本集支持；对本地单机 MongoDB（非副本集）默认回退为无资源事务管理器，
+   * 以避免 "Transaction numbers are only allowed on a replica set member or mongos" 错误。
    */
   @Bean
-  public MongoTransactionManager transactionManager(MongoDatabaseFactory databaseFactory) {
-    return new MongoTransactionManager(databaseFactory);
+  public PlatformTransactionManager transactionManager(MongoDatabaseFactory databaseFactory) {
+    if (mongoTransactionsEnabled) {
+      return new MongoTransactionManager(databaseFactory);
+    }
+
+    return new NoOpTransactionManager();
+  }
+
+  /**
+   * 一个“空实现”的事务管理器，用于在单机 MongoDB（非副本集）环境下兼容 @Transactional。
+   *
+   * 注意：这不会提供真正的 MongoDB 事务能力（原子性/回滚），仅用于避免在不支持事务的环境中报错。
+   */
+  private static class NoOpTransactionManager implements PlatformTransactionManager {
+    @Override
+    public TransactionStatus getTransaction(TransactionDefinition definition) {
+      return new SimpleTransactionStatus();
+    }
+
+    @Override
+    public void commit(TransactionStatus status) {
+      // no-op
+    }
+
+    @Override
+    public void rollback(TransactionStatus status) {
+      // no-op
+    }
   }
 }

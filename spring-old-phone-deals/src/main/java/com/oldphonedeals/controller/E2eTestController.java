@@ -34,6 +34,8 @@ import java.util.UUID;
 public class E2eTestController {
 
     private static final String DEFAULT_PASSWORD = "Password123!";
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String USER_ROLE = "USER";
 
     private final UserRepository userRepository;
     private final PhoneRepository phoneRepository;
@@ -62,7 +64,7 @@ public class E2eTestController {
                         .password(passwordEncoder.encode(DEFAULT_PASSWORD))
                         .wishlist(new ArrayList<>())
                         .isAdmin(false)
-                        .role("USER")
+                        .role(USER_ROLE)
                         .isDisabled(false)
                         .isBan(false)
                         .isVerified(true)
@@ -79,7 +81,24 @@ public class E2eTestController {
                         .password(passwordEncoder.encode(DEFAULT_PASSWORD))
                         .wishlist(new ArrayList<>())
                         .isAdmin(false)
-                        .role("USER")
+                        .role(USER_ROLE)
+                        .isDisabled(false)
+                        .isBan(false)
+                        .isVerified(true)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build()
+        );
+
+        User admin = userRepository.save(
+                User.builder()
+                        .firstName("E2E")
+                        .lastName("Admin")
+                        .email("e2e-admin@example.com")
+                        .password(passwordEncoder.encode(DEFAULT_PASSWORD))
+                        .wishlist(new ArrayList<>())
+                        .isAdmin(true)
+                        .role(ADMIN_ROLE)
                         .isDisabled(false)
                         .isBan(false)
                         .isVerified(true)
@@ -131,6 +150,11 @@ public class E2eTestController {
                 .seller(E2eSetupResponse.TestUserInfo.builder()
                         .id(seller.getId())
                         .email(seller.getEmail())
+                        .password(DEFAULT_PASSWORD)
+                        .build())
+                .admin(E2eSetupResponse.TestUserInfo.builder()
+                        .id(admin.getId())
+                        .email(admin.getEmail())
                         .password(DEFAULT_PASSWORD)
                         .build())
                 .phones(List.of(

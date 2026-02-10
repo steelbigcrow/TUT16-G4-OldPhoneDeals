@@ -19,6 +19,7 @@ public class E2eSetupResponse {
 
     private TestUserInfo buyer;
     private TestUserInfo seller;
+    private TestUserInfo admin;
     private List<TestPhoneInfo> phones;
 
     @Data
