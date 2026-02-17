@@ -1,9 +1,8 @@
 spring:
-  # 测试环境使用嵌入式 MongoDB（需要添加 de.flapdoodle.embed.mongo 依赖）
-  # 或者使用 Testcontainers
+  # 测试环境固定使用独立 MongoDB test 库，避免污染开发库
   data:
     mongodb:
-      # 使用内存数据库进行测试
+      # 持久化测试数据库：oldphonedeals-test
       uri: ${MONGODB_URI_TEST:mongodb://localhost:27017/oldphonedeals-test}
   
   # 测试环境邮件配置（使用假邮件服务）
