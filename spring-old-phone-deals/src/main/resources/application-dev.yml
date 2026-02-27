@@ -11,6 +11,13 @@ spring:
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
 # 开发环境服务器
 server:
   port: 8080
@@ -40,3 +47,8 @@ frontend:
 file:
   upload:
     dir: ./dev-uploads
+
+app:
+  mongo:
+    transactions:
+      enabled: ${APP_MONGO_TRANSACTIONS_ENABLED:false}

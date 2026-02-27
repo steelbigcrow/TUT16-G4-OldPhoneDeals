@@ -18,6 +18,13 @@ spring:
           starttls:
             enable: false
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
 # 测试环境服务器配置
 server:
   port: 0  # 随机端口
@@ -45,3 +52,8 @@ frontend:
 file:
   upload:
     dir: ./test-uploads/images
+
+app:
+  mongo:
+    transactions:
+      enabled: false

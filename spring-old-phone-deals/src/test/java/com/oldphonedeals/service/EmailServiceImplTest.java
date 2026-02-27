@@ -1,20 +1,17 @@
 package com.oldphonedeals.service;
 
+import com.oldphonedeals.dto.message.EmailMessage;
+import com.oldphonedeals.enums.EmailType;
+import com.oldphonedeals.producer.EmailMessageProducer;
 import com.oldphonedeals.service.impl.EmailServiceImpl;
-import jakarta.mail.MessagingException;
-import jakarta.mail.Session;
-import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.MailSendException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 /**
@@ -24,84 +21,83 @@ import static org.mockito.Mockito.*;
 class EmailServiceImplTest {
     
     @Mock
-    private JavaMailSender mailSender;
-    
-    @Mock
-    private MimeMessage mimeMessage;
+    private EmailMessageProducer emailMessageProducer;
     
     private EmailServiceImpl emailService;
     
     @BeforeEach
     void setUp() {
-        emailService = new EmailServiceImpl(mailSender);
-        // 使用反射设置私有字段
-        ReflectionTestUtils.setField(emailService, "fromEmail", "test@example.com");
-        ReflectionTestUtils.setField(emailService, "frontendUrl", "http://localhost:4200");
+        emailService = new EmailServiceImpl(emailMessageProducer);
     }
     
     @Test
-    void shouldSendVerificationEmail() throws MessagingException {
+    void shouldPublishVerificationEmailMessage() {
         // Given
         String toEmail = "user@example.com";
         String verifyToken = "test-verify-token";
         String userName = "Test User";
-        
-        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
-        
+
         // When
         emailService.sendVerificationEmail(toEmail, verifyToken, userName);
         
         // Then
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(emailMessageProducer).publish(argThat(message ->
+            message.getType() == EmailType.VERIFICATION
+                && toEmail.equals(message.getToEmail())
+                && verifyToken.equals(message.getToken())
+                && userName.equals(message.getUserName())
+                && message.getMessageId() != null
+        ));
     }
     
     @Test
-    void shouldSendPasswordResetEmail() throws MessagingException {
+    void shouldPublishPasswordResetLinkMessage() {
         // Given
         String toEmail = "user@example.com";
         String resetToken = "test-reset-token";
         String userName = "Test User";
-        
-        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
-        
+
         // When
         emailService.sendPasswordResetEmail(toEmail, resetToken, userName);
         
         // Then
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(emailMessageProducer).publish(argThat(message ->
+            message.getType() == EmailType.PASSWORD_RESET_LINK
+                && toEmail.equals(message.getToEmail())
+                && resetToken.equals(message.getToken())
+                && userName.equals(message.getUserName())
+        ));
     }
     
     @Test
-    void shouldSendEmailWithHtmlContent() throws MessagingException {
+    void shouldPublishGenericEmailMessage() {
         // Given
         String toEmail = "user@example.com";
         String subject = "Test Subject";
         String htmlContent = "<h1>Test HTML Content</h1>";
-        
-        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
-        
+
         // When
         emailService.sendEmail(toEmail, subject, htmlContent);
         
         // Then
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(emailMessageProducer).publish(argThat(message ->
+            message.getType() == EmailType.GENERIC
+                && toEmail.equals(message.getToEmail())
+                && subject.equals(message.getSubject())
+                && htmlContent.equals(message.getHtmlContent())
+        ));
     }
     
     @Test
-    void shouldThrowMailSendExceptionWhenEmailSendingFails() {
+    void shouldPropagateExceptionWhenPublishFails() {
         // Given
-        String toEmail = "user@example.com";
-        String subject = "Test Subject";
-        String htmlContent = "<h1>Test HTML Content</h1>";
-        
-        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
-        doThrow(new MailSendException("SMTP connection failed")).when(mailSender).send(any(MimeMessage.class));
-        
+        doThrow(new IllegalStateException("broker unavailable"))
+            .when(emailMessageProducer)
+            .publish(any(EmailMessage.class));
+
         // When & Then
-        MailSendException exception = assertThrows(MailSendException.class, () -> {
-            emailService.sendEmail(toEmail, subject, htmlContent);
-        });
-        
-        assertEquals("SMTP connection failed", exception.getMessage());
+        assertThrows(IllegalStateException.class, () ->
+            emailService.sendEmail("user@example.com", "subject", "content")
+        );
     }
 }

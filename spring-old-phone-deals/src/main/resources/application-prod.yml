@@ -10,6 +10,13 @@ spring:
     username: apikey
     password: ${SENDGRID_API_KEY}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
 server:
   port: ${PORT:8080}
   error:
@@ -41,3 +48,8 @@ frontend:
 file:
   upload:
     dir: ${UPLOAD_DIR:/var/www/oldphonedeals/uploads}
+
+app:
+  mongo:
+    transactions:
+      enabled: ${APP_MONGO_TRANSACTIONS_ENABLED:true}

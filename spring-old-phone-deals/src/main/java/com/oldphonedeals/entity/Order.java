@@ -1,5 +1,6 @@
 package com.oldphonedeals.entity;
 
+import com.oldphonedeals.enums.OrderPostProcessStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,6 +29,11 @@ public class Order {
     private Double totalAmount;
     
     private Address address;
+
+    @Builder.Default
+    private OrderPostProcessStatus postProcessStatus = OrderPostProcessStatus.PENDING;
+
+    private String postProcessError;
     
     @CreatedDate
     private LocalDateTime createdAt;

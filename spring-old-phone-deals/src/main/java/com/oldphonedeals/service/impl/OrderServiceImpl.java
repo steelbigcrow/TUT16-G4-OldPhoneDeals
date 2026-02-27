@@ -1,5 +1,6 @@
 package com.oldphonedeals.service.impl;
 
+import com.oldphonedeals.dto.message.OrderPostProcessMessage;
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
 import com.oldphonedeals.dto.response.order.OrderItemResponse;
 import com.oldphonedeals.dto.response.order.OrderPageResponse;
@@ -7,11 +8,14 @@ import com.oldphonedeals.dto.response.order.OrderResponse;
 import com.oldphonedeals.entity.Cart;
 import com.oldphonedeals.entity.Order;
 import com.oldphonedeals.entity.Phone;
+import com.oldphonedeals.enums.OrderPostProcessStatus;
 import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
+import com.oldphonedeals.producer.OrderMessageProducer;
 import com.oldphonedeals.repository.CartRepository;
 import com.oldphonedeals.repository.OrderRepository;
 import com.oldphonedeals.repository.PhoneRepository;
+import com.oldphonedeals.repository.custom.PhoneStockRepository;
 import com.oldphonedeals.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +26,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +45,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
     private final PhoneRepository phoneRepository;
+    private final PhoneStockRepository phoneStockRepository;
+    private final OrderMessageProducer orderMessageProducer;
     
     @Override
     @Transactional
@@ -54,8 +61,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Cart is empty");
         }
         
-        // 2. 验证每个商品的库存和状态
-        List<Phone> phones = new ArrayList<>();
+        // 2. 验证每个商品状态，并执行原子扣库存
         for (Cart.CartItem cartItem : cart.getItems()) {
             Phone phone = phoneRepository.findById(cartItem.getPhoneId())
                     .orElseThrow(() -> new ResourceNotFoundException("Phone not found: " + cartItem.getPhoneId()));
@@ -65,13 +71,20 @@ public class OrderServiceImpl implements OrderService {
                 throw new BadRequestException("Phone " + phone.getTitle() + " is not available");
             }
             
-            // 验证库存
+            // 预检库存
             if (cartItem.getQuantity() > phone.getStock()) {
                 throw new BadRequestException("Insufficient stock for phone " + phone.getTitle() + 
                         ". Available: " + phone.getStock() + ", Requested: " + cartItem.getQuantity());
             }
-            
-            phones.add(phone);
+
+            // 原子扣减库存，防并发超卖
+            boolean stockUpdated = phoneStockRepository.decreaseStockAndIncreaseSales(
+                cartItem.getPhoneId(),
+                cartItem.getQuantity()
+            );
+            if (!stockUpdated) {
+                throw new BadRequestException("Insufficient stock for phone " + phone.getTitle());
+            }
         }
         
         // 3. 计算总价
@@ -103,6 +116,7 @@ public class OrderServiceImpl implements OrderService {
                 .items(orderItems)
                 .totalAmount(totalAmount)
                 .address(orderAddress)
+                .postProcessStatus(OrderPostProcessStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
         
@@ -110,28 +124,18 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
         log.info("Order created: {}", order.getId());
         
-        // 6. 扣减库存并增加销售计数
-        for (int i = 0; i < cart.getItems().size(); i++) {
-            Cart.CartItem cartItem = cart.getItems().get(i);
-            Phone phone = phones.get(i);
-            
-            // 扣减库存
-            phone.setStock(phone.getStock() - cartItem.getQuantity());
-            
-            // 增加销售计数
-            Integer salesCount = phone.getSalesCount() != null ? phone.getSalesCount() : 0;
-            phone.setSalesCount(salesCount + cartItem.getQuantity());
-            
-            phoneRepository.save(phone);
-            log.debug("Updated phone stock and sales - phoneId: {}, newStock: {}, newSalesCount: {}", 
-                    phone.getId(), phone.getStock(), phone.getSalesCount());
-        }
-        
-        // 7. 清空购物车
+        // 6. 清空购物车
         cart.getItems().clear();
         cartRepository.save(cart);
         log.info("Cart cleared for user: {}", userId);
-        
+
+        // 7. 发布订单后置处理消息；失败时抛异常触发事务回滚
+        try {
+            orderMessageProducer.publishOrderPostProcessMessage(buildOrderPostProcessMessage(order));
+        } catch (RuntimeException ex) {
+            throw new BadRequestException("Failed to submit order, please try again");
+        }
+
         // 8. 返回订单响应
         return buildOrderResponse(order);
     }
@@ -224,5 +228,21 @@ public class OrderServiceImpl implements OrderService {
                 .address(addressInfo)
                 .createdAt(order.getCreatedAt())
                 .build();
+    }
+
+    private OrderPostProcessMessage buildOrderPostProcessMessage(Order order) {
+        return OrderPostProcessMessage.builder()
+            .messageId(UUID.randomUUID().toString())
+            .orderId(order.getId())
+            .userId(order.getUserId())
+            .items(order.getItems().stream()
+                .map(item -> OrderPostProcessMessage.Item.builder()
+                    .phoneId(item.getPhoneId())
+                    .quantity(item.getQuantity())
+                    .build())
+                .collect(Collectors.toList()))
+            .totalAmount(order.getTotalAmount())
+            .timestamp(Instant.now())
+            .build();
     }
 }

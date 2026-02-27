@@ -151,19 +151,16 @@ public class AuthServiceImpl implements AuthService {
         
         user = userRepository.save(user);
         log.info("User registered successfully: {}", user.getEmail());
+
+        final String savedUserEmail = user.getEmail();
+        final String savedUserFirstName = user.getFirstName();
         
         // 4. 发送验证邮件（异步）
-        try {
-            emailService.sendVerificationEmail(
-                user.getEmail(),
-                verifyToken,
-                user.getFirstName()
-            );
-            log.info("Verification email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send verification email to: {}", user.getEmail(), e);
-            // 不抛出异常，因为用户已创建成功，只是邮件发送失败
-        }
+        sendEmailSafely(
+            () -> emailService.sendVerificationEmail(savedUserEmail, verifyToken, savedUserFirstName),
+            "verification email",
+            savedUserEmail
+        );
         
         return buildAuthUserResponse(user);
     }
@@ -219,17 +216,12 @@ public class AuthServiceImpl implements AuthService {
         String resetToken = UUID.randomUUID().toString();
         
         // 发送密码重置邮件
-        try {
-            emailService.sendPasswordResetEmail(
-                user.getEmail(),
-                resetToken,
-                user.getFirstName()
-            );
-            log.info("Password reset email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send password reset email to: {}", user.getEmail(), e);
-            throw new RuntimeException("Failed to send password reset email", e);
-        }
+        sendEmailOrThrow(
+            () -> emailService.sendPasswordResetEmail(user.getEmail(), resetToken, user.getFirstName()),
+            "password reset email",
+            user.getEmail(),
+            "Failed to send password reset email"
+        );
     }
     
     /**
@@ -285,21 +277,19 @@ public class AuthServiceImpl implements AuthService {
         log.info("Password reset successfully for user: {}", user.getEmail());
         
         // 5. 发送邮件通知（异步）
-        try {
-            String subject = "Password Changed Successfully - Old Phone Deals";
-            String content = String.format(
-                "<p>Hi %s,</p>" +
-                "<p>We wanted to let you know that your password has been successfully changed.</p>" +
-                "<p>If you did not make this change, please contact our support team immediately to secure your account.</p>" +
-                "<p>Thanks,<br/>The Old Phone Deals Team</p>",
-                user.getFirstName()
-            );
-            emailService.sendEmail(user.getEmail(), subject, content);
-            log.info("Password change notification email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send password change notification to: {}", user.getEmail(), e);
-            // 不抛出异常，因为密码已成功重置
-        }
+        String subject = "Password Changed Successfully - Old Phone Deals";
+        String content = String.format(
+            "<p>Hi %s,</p>" +
+            "<p>We wanted to let you know that your password has been successfully changed.</p>" +
+            "<p>If you did not make this change, please contact our support team immediately to secure your account.</p>" +
+            "<p>Thanks,<br/>The Old Phone Deals Team</p>",
+            user.getFirstName()
+        );
+        sendEmailSafely(
+            () -> emailService.sendEmail(user.getEmail(), subject, content),
+            "password change notification",
+            user.getEmail()
+        );
     }
     
     /**
@@ -368,17 +358,11 @@ public class AuthServiceImpl implements AuthService {
         log.info("Password reset code generated for user: {}", user.getEmail());
         
         // 发送包含重置码的邮件
-        try {
-            emailService.sendPasswordResetCodeEmail(
-                user.getEmail(),
-                resetCode,
-                user.getFirstName()
-            );
-            log.info("Password reset code email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send password reset code email to: {}", user.getEmail(), e);
-            // 不抛出异常，因为重置码已保存，用户可以稍后重试
-        }
+        sendEmailSafely(
+            () -> emailService.sendPasswordResetCodeEmail(user.getEmail(), resetCode, user.getFirstName()),
+            "password reset code email",
+            user.getEmail()
+        );
     }
     
     /**
@@ -463,21 +447,19 @@ public class AuthServiceImpl implements AuthService {
         log.info("Password reset successfully with code for user: {}", user.getEmail());
         
         // 发送密码更改通知邮件
-        try {
-            String subject = "Password Changed Successfully - Old Phone Deals";
-            String content = String.format(
-                "<p>Hi %s,</p>" +
-                "<p>We wanted to let you know that your password has been successfully changed.</p>" +
-                "<p>If you did not make this change, please contact our support team immediately to secure your account.</p>" +
-                "<p>Thanks,<br/>The Old Phone Deals Team</p>",
-                user.getFirstName()
-            );
-            emailService.sendEmail(user.getEmail(), subject, content);
-            log.info("Password change notification email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send password change notification to: {}", user.getEmail(), e);
-            // 不抛出异常，因为密码已成功重置
-        }
+        String subject = "Password Changed Successfully - Old Phone Deals";
+        String content = String.format(
+            "<p>Hi %s,</p>" +
+            "<p>We wanted to let you know that your password has been successfully changed.</p>" +
+            "<p>If you did not make this change, please contact our support team immediately to secure your account.</p>" +
+            "<p>Thanks,<br/>The Old Phone Deals Team</p>",
+            user.getFirstName()
+        );
+        sendEmailSafely(
+            () -> emailService.sendEmail(user.getEmail(), subject, content),
+            "password change notification",
+            user.getEmail()
+        );
     }
     
     /**
@@ -514,17 +496,12 @@ public class AuthServiceImpl implements AuthService {
         log.info("New verification token generated for user: {}", user.getEmail());
         
         // 发送验证邮件
-        try {
-            emailService.sendVerificationEmail(
-                user.getEmail(),
-                verifyToken,
-                user.getFirstName()
-            );
-            log.info("Verification email resent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to resend verification email to: {}", user.getEmail(), e);
-            throw new RuntimeException("Failed to resend verification email", e);
-        }
+        sendEmailOrThrow(
+            () -> emailService.sendVerificationEmail(user.getEmail(), verifyToken, user.getFirstName()),
+            "resend verification email",
+            user.getEmail(),
+            "Failed to resend verification email"
+        );
     }
     
     /**
@@ -558,5 +535,24 @@ public class AuthServiceImpl implements AuthService {
             .isDisabled(user.getIsDisabled())
             .isVerified(user.getIsVerified())
             .build();
+    }
+
+    private void sendEmailSafely(Runnable action, String actionName, String email) {
+        try {
+            action.run();
+            log.info("{} sent to: {}", actionName, email);
+        } catch (Exception ex) {
+            log.error("Failed to send {} to: {}", actionName, email, ex);
+        }
+    }
+
+    private void sendEmailOrThrow(Runnable action, String actionName, String email, String errorMessage) {
+        try {
+            action.run();
+            log.info("{} sent to: {}", actionName, email);
+        } catch (Exception ex) {
+            log.error("Failed to send {} to: {}", actionName, email, ex);
+            throw new RuntimeException(errorMessage, ex);
+        }
     }
 }

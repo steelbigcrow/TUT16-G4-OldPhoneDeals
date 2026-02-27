@@ -36,6 +36,27 @@ spring:
       max-request-size: 10MB
       file-size-threshold: 1MB
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 5000
+          max-interval: 45000
+          multiplier: 3.0
+
 # 服务器配置
 server:
   port: ${PORT:8080}
@@ -88,3 +109,6 @@ management:
 app:
   e2e:
     enabled: ${APP_E2E_ENABLED:false}
+  mongo:
+    transactions:
+      enabled: ${APP_MONGO_TRANSACTIONS_ENABLED:false}
