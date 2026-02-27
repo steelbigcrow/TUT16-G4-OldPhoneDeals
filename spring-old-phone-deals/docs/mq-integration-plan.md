@@ -25,7 +25,7 @@
 | 可靠投递 | 邮件发送通过 MQ 持久化，保证不丢失 |
 | 自动重试 | SMTP 失败后自动重试，超过阈值进入死信队列 |
 | 响应解耦 | 订单结账的后置操作（邮件、通知、审计）异步化，缩短用户等待（库存扣减保留在同步核心路径） |
-| 一致性保障 | 通过同步原子扣库存、消息幂等和补偿重发流程，避免重复消费与超卖 |
+| 一致性保障 | 通过同步原子扣库存、事务回滚和消息幂等，避免重复消费与超卖 |
 | 可扩展性 | 未来新增通知渠道（短信、推送）只需增加消费者 |
 
 ---
@@ -107,6 +107,7 @@
 | `messageId` | String(UUID) | 消息唯一 ID（用于幂等与链路追踪） |
 | `orderId` | String | 订单 ID |
 | `userId` | String | 买家用户 ID |
+| `messageId` 生成规则 | String | 由生产者在首次发布时生成并持久化；任何重试/重投（含人工回放）必须复用原 `messageId`，禁止生成新值 |
 | `items` | List | 订单商品列表（phoneId + quantity） |
 | `totalAmount` | Double | 订单总金额（与当前 `Order.totalAmount` 字段保持一致，后续可统一升级为 BigDecimal） |
 | `timestamp` | Instant | 消息创建时间（UTC） |
@@ -281,13 +282,14 @@ AuthServiceImpl ──发布消息──▶ RabbitMQ (email.send.queue)
 - 在库存扣减成功后再创建订单，订单初始状态设为 `postProcessStatus=PENDING`
 - 购物车清空仍在同步事务中完成，防止用户重复提交
 - 订单保存成功后，通过 `OrderMessageProducer` 发布 `OrderPostProcessMessage` 到 MQ，并通过 publisher confirm 确认已被 broker 接收
-- 若发布失败，订单保持 `PENDING` 并记录 `postProcessError`，由补偿任务定时重发（避免“DB 成功但 MQ 丢事件”）
+- 若发布失败（发送异常、Return、Confirm Nack），立即抛出业务异常并回滚当前事务，向前端返回失败响应（不引入库存回滚补偿功能）
 - 返回 `OrderResponse` 给用户时，库存已被同步扣减，不会出现“下单成功但后续扣库失败”
 
 **异步后置处理（OrderPostProcessConsumer）：**
 
 - 监听 `order.post.process.queue`，接收 `OrderPostProcessMessage`
 - 先基于 `messageId` 做幂等判重（`processed_messages` 集合唯一索引），重复消息直接 ACK
+- 若需要重放 DLQ 消息，必须保留原 `messageId` 后再重投，确保幂等判重继续生效
 - 执行通知任务：发送订单确认邮件（构造 `EmailMessage` 并发布到 `email.send.queue`）和卖家通知（可选）
 - 完成后更新 `Order.postProcessStatus=SUCCESS`；失败时记录错误并按重试策略处理
 - 采用手动 ACK：仅在后置任务和状态更新成功后确认消息
@@ -297,7 +299,7 @@ AuthServiceImpl ──发布消息──▶ RabbitMQ (email.send.queue)
 - 库存扣减位于同步核心路径，避免“已返回成功但库存未锁定”的一致性问题
 - 消息体包含 `messageId`，消费者必须幂等处理，避免重复发送通知
 - 生产者启用 Confirm/Return，消费者使用手动 ACK + 有限重试，避免“无限重试风暴”
-- 若发布失败或重试耗尽，订单保留 `PENDING/FAILED` 状态并触发补偿重发；必要时落入 DLQ 供人工处理
+- 下单链路中若消息发布失败则事务回滚并向前端返回失败；消费端重试耗尽后进入 DLQ，由人工处理
 
 ---
 
@@ -327,7 +329,7 @@ AuthServiceImpl ──发布消息──▶ RabbitMQ (email.send.queue)
 
 说明：以上为全局默认值。若邮件队列与订单队列使用不同退避参数（如 5s 与 2s 起步），需在 `RabbitMQConfig` 中为不同 listener 配置独立的 `RetryInterceptor` 或 `ListenerContainerFactory`。
 
-补充：为保证 `@Transactional` 的真实原子性，MongoDB 需运行在副本集模式（Replica Set）。若开发环境为单机非副本集，本项目会降级为无资源事务管理器，应开启“发布失败补偿重发”与“库存扣减失败回滚补偿”保护流程。
+补充：为保证 `@Transactional` 的真实原子性，MongoDB 需运行在副本集模式（Replica Set），并在订单结账改造环境中开启 `app.mongo.transactions.enabled=true`。若运行在单机非副本集（无真实事务）环境，不应启用“同步扣库存 + 发布后置消息”的阶段二流程。
 
 ### 6.2 .env 新增变量
 
@@ -412,7 +414,7 @@ com.oldphonedeals/
 | `EmailConsumer` | Mock `JavaMailSender`，验证不同 EmailType 分发到正确的模板渲染逻辑 |
 | `OrderPostProcessConsumer` | Mock `ProcessedMessageRepository`/`OrderRepository`，验证幂等判重、后置通知与状态更新 |
 | `EmailServiceImpl`（改造后） | 验证调用 Producer 而非直接调用 SMTP |
-| `OrderServiceImpl.checkout()`（改造后） | 验证同步原子扣库存成功后才创建订单并发布消息；发布失败时写入待补偿状态 |
+| `OrderServiceImpl.checkout()`（改造后） | 验证同步原子扣库存成功后才创建订单并发布消息；发布失败时抛异常并整体回滚 |
 
 ### 8.2 集成测试
 
@@ -455,6 +457,6 @@ com.oldphonedeals/
 | 3 | 新增 `PhoneStockRepository`（MongoTemplate 原子扣库存）与 `OrderPostProcessConsumer`（幂等判重 + 后置通知） |
 | 4 | 更新 `RabbitMQConfig.java`，追加 order.exchange、相关队列及独立 listener 重试策略 |
 | 5 | 改造 `OrderServiceImpl.checkout()`：同步扣库存、记录 `postProcessStatus` 并发布后置消息 |
-| 6 | 新增补偿重发机制（扫描 `PENDING/FAILED` 订单重发）并编写单元/集成测试 |
+| 6 | 新增 DLQ 人工回放操作规范（必须复用原 `messageId`）并编写单元/集成测试 |
 
 验收标准：结账接口在库存同步扣减后返回，后置通知通过 MQ 异步完成，失败消息可在状态字段与 DLQ 中定位并补偿。
