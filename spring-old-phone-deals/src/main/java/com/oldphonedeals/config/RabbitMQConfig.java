@@ -1,5 +1,7 @@
 package com.oldphonedeals.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -95,7 +97,10 @@ public class RabbitMQConfig {
 
   @Bean
   public MessageConverter messageConverter() {
-    return new Jackson2JsonMessageConverter();
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.findAndRegisterModules();
+    objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    return new Jackson2JsonMessageConverter(objectMapper);
   }
 
   @Bean

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.retry.support.RetrySynchronizationManager;
 import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
@@ -22,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 @Slf4j
 public class EmailConsumer {
+
+  private static final int EMAIL_RETRY_MAX_ATTEMPTS = 3;
 
   private final JavaMailSender mailSender;
 
@@ -45,13 +48,24 @@ public class EmailConsumer {
       channel.basicAck(deliveryTag, false);
       log.debug("Email consumed successfully: {}", message.getMessageId());
     } catch (Exception ex) {
-      log.error("Email consumption failed: {}", message.getMessageId(), ex);
-      try {
-        channel.basicNack(deliveryTag, false, false);
-      } catch (Exception channelEx) {
-        log.error("Failed to nack email message: {}", message.getMessageId(), channelEx);
+      if (isRetryExhausted()) {
+        try {
+          channel.basicNack(deliveryTag, false, false);
+          log.warn("Email moved to DLQ after retries exhausted: {}", message.getMessageId());
+          return;
+        } catch (Exception nackEx) {
+          nackEx.addSuppressed(ex);
+          throw new IllegalStateException("Email consumption failed and could not nack: " + message.getMessageId(), nackEx);
+        }
       }
+      log.error("Email consumption failed: {}", message.getMessageId(), ex);
+      throw new IllegalStateException("Email consumption failed: " + message.getMessageId(), ex);
     }
+  }
+
+  private boolean isRetryExhausted() {
+    var retryContext = RetrySynchronizationManager.getContext();
+    return retryContext != null && retryContext.getRetryCount() >= EMAIL_RETRY_MAX_ATTEMPTS - 1;
   }
 
   private void sendEmailByType(EmailMessage message) {

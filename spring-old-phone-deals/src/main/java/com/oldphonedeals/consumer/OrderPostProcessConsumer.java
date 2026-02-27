@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.retry.support.RetrySynchronizationManager;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderPostProcessConsumer {
+
+  private static final int ORDER_POST_PROCESS_MAX_ATTEMPTS = 3;
 
   private final ProcessedMessageRepository processedMessageRepository;
   private final OrderRepository orderRepository;
@@ -67,11 +70,17 @@ public class OrderPostProcessConsumer {
     } catch (Exception ex) {
       log.error("Order post-process failed: {}", message.getMessageId(), ex);
       markOrderFailed(message.getOrderId(), ex.getMessage());
-      try {
-        channel.basicNack(deliveryTag, false, false);
-      } catch (Exception channelEx) {
-        log.error("Failed to nack order post-process message: {}", message.getMessageId(), channelEx);
+      if (isRetryExhausted()) {
+        try {
+          channel.basicNack(deliveryTag, false, false);
+          log.warn("Order post-process moved to DLQ after retries exhausted: {}", message.getMessageId());
+          return;
+        } catch (Exception nackEx) {
+          nackEx.addSuppressed(ex);
+          throw new IllegalStateException("Order post-process failed and could not nack: " + message.getMessageId(), nackEx);
+        }
       }
+      throw new IllegalStateException("Order post-process failed: " + message.getMessageId(), ex);
     }
   }
 
@@ -87,5 +96,10 @@ public class OrderPostProcessConsumer {
     } catch (Exception ex) {
       log.error("Failed to mark order post-process status as FAILED: {}", orderId, ex);
     }
+  }
+
+  private boolean isRetryExhausted() {
+    var retryContext = RetrySynchronizationManager.getContext();
+    return retryContext != null && retryContext.getRetryCount() >= ORDER_POST_PROCESS_MAX_ATTEMPTS - 1;
   }
 }

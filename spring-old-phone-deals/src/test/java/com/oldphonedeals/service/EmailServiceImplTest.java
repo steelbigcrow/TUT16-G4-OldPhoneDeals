@@ -47,6 +47,7 @@ class EmailServiceImplTest {
                 && verifyToken.equals(message.getToken())
                 && userName.equals(message.getUserName())
                 && message.getMessageId() != null
+                && message.getTimestamp() != null
         ));
     }
     
@@ -66,6 +67,26 @@ class EmailServiceImplTest {
                 && toEmail.equals(message.getToEmail())
                 && resetToken.equals(message.getToken())
                 && userName.equals(message.getUserName())
+                && message.getMessageId() != null
+                && message.getTimestamp() != null
+        ));
+    }
+
+    @Test
+    void shouldPublishPasswordResetCodeMessage() {
+        String toEmail = "user@example.com";
+        String resetCode = "123456";
+        String userName = "Test User";
+
+        emailService.sendPasswordResetCodeEmail(toEmail, resetCode, userName);
+
+        verify(emailMessageProducer).publish(argThat(message ->
+            message.getType() == EmailType.PASSWORD_RESET_CODE
+                && toEmail.equals(message.getToEmail())
+                && resetCode.equals(message.getToken())
+                && userName.equals(message.getUserName())
+                && message.getMessageId() != null
+                && message.getTimestamp() != null
         ));
     }
     
@@ -85,6 +106,8 @@ class EmailServiceImplTest {
                 && toEmail.equals(message.getToEmail())
                 && subject.equals(message.getSubject())
                 && htmlContent.equals(message.getHtmlContent())
+                && message.getMessageId() != null
+                && message.getTimestamp() != null
         ));
     }
     
