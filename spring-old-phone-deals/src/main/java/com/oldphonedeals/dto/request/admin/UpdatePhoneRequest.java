@@ -21,6 +21,14 @@ import lombok.NoArgsConstructor;
 public class UpdatePhoneRequest {
 
     /**
+     * 乐观锁版本号（可选）。
+     * <p>
+     * 当提供该字段时，后端会校验版本是否一致，不一致则返回 409 CONFLICT。
+     * </p>
+     */
+    private Long version;
+
+    /**
      * 商品标题
      */
     @NotBlank(message = "Title is required")

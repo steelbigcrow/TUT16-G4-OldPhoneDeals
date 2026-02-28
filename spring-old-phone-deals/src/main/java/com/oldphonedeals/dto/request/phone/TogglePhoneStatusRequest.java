@@ -10,6 +10,11 @@ import lombok.Data;
 public class TogglePhoneStatusRequest {
 
   /**
+   * 乐观锁版本号（可选）。
+   */
+  private Long version;
+
+  /**
    * ??????
    */
   @NotNull(message = "isDisabled is required")
