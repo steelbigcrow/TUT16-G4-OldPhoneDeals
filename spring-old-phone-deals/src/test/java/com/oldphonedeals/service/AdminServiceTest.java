@@ -448,6 +448,7 @@ class AdminServiceTest {
         request.setPrice(899.99);
         
         when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+        when(phoneRepository.save(any(Phone.class))).thenReturn(testPhone);
         doNothing().when(adminLogService).logAction(anyString(), any(), any(), anyString(), anyString());
 
         // Act
@@ -465,6 +466,7 @@ class AdminServiceTest {
         // Arrange
         boolean initialStatus = testPhone.getIsDisabled();
         when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+        when(phoneRepository.save(any(Phone.class))).thenReturn(testPhone);
         doNothing().when(adminLogService).logAction(anyString(), any(), any(), anyString(), anyString());
 
         // Act
