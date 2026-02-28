@@ -2,6 +2,7 @@ package com.oldphonedeals.exception;
 
 import com.oldphonedeals.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
  *   <li>DuplicateResourceException → 409 CONFLICT</li>
  *   <li>InsufficientStockException → 400 BAD_REQUEST</li>
  *   <li>ForbiddenException → 403 FORBIDDEN</li>
+ *   <li>VersionConflictException / OptimisticLockingFailureException → 409 CONFLICT</li>
  *   <li>MethodArgumentNotValidException → 400 BAD_REQUEST（验证错误）</li>
  *   <li>Exception → 500 INTERNAL_SERVER_ERROR（未捕获的异常）</li>
  * </ul>
@@ -93,6 +95,40 @@ public class GlobalExceptionHandler {
     return ResponseEntity
         .status(HttpStatus.CONFLICT)
         .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 处理版本冲突异常（乐观锁冲突）
+   *
+   * @param ex VersionConflictException 异常实例
+   * @return 409 错误响应
+   */
+  @ExceptionHandler(VersionConflictException.class)
+  public ResponseEntity<ApiResponse<Void>> handleVersionConflictException(VersionConflictException ex) {
+    log.warn("Version conflict: {}", ex.getMessage());
+    return ResponseEntity
+        .status(HttpStatus.CONFLICT)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 处理乐观锁更新失败（Spring Data 版本字段冲突）
+   * <p>
+   * 当使用 {@code @Version} 字段并发更新时，Spring Data MongoDB 会抛出该异常。
+   * 统一映射为 409，避免将底层异常细节暴露给客户端。
+   * </p>
+   *
+   * @param ex OptimisticLockingFailureException 异常实例
+   * @return 409 错误响应
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailureException(
+      OptimisticLockingFailureException ex
+  ) {
+    log.warn("Optimistic locking failure: {}", ex.getMessage());
+    return ResponseEntity
+        .status(HttpStatus.CONFLICT)
+        .body(ApiResponse.error("Version conflict: resource was modified by another request"));
   }
 
   /**
