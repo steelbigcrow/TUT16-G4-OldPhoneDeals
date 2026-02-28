@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends MongoRepository<Order, String> {
@@ -17,6 +18,8 @@ public interface OrderRepository extends MongoRepository<Order, String> {
     Page<Order> findByUserId(String userId, Pageable pageable);
     
     List<Order> findByUserId(String userId);
+
+    Optional<Order> findByUserIdAndIdempotencyKey(String userId, String idempotencyKey);
     
     // 查询指定时间范围内的订单
     @Query("{'createdAt': {$gte: ?0, $lte: ?1}}")

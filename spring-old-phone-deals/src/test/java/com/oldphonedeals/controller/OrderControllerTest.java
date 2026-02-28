@@ -13,6 +13,7 @@ import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.security.CustomUserDetailsService;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.OrderService;
+import com.oldphonedeals.service.result.CheckoutResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // 禁用Security过滤器以简化测试
 @DisplayName("OrderController集成测试")
 class OrderControllerTest {
+    private static final String IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -160,11 +163,12 @@ class OrderControllerTest {
     @DisplayName("应该成功创建订单 - 当结账请求有效时")
     void shouldCreateOrder_whenCheckoutRequestValid() throws Exception {
         // Arrange
-        when(orderService.checkout(anyString(), any(CheckoutRequest.class)))
-                .thenReturn(orderResponse);
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
+                .thenReturn(CheckoutResult.created(orderResponse));
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(checkoutRequest)))
                 .andExpect(status().isCreated())
@@ -180,7 +184,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.address.street").value("123 Main St"))
                 .andExpect(jsonPath("$.data.address.city").value("Sydney"));
 
-        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
     }
 
     @Test
@@ -193,11 +197,12 @@ class OrderControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
 
-        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class), anyString());
     }
 
     @Test
@@ -216,11 +221,12 @@ class OrderControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
 
-        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class), anyString());
     }
 
     @Test
@@ -228,16 +234,17 @@ class OrderControllerTest {
     @DisplayName("应该返回400错误 - 当购物车为空时")
     void shouldReturnBadRequest_whenCartIsEmpty() throws Exception {
         // Arrange
-        when(orderService.checkout(anyString(), any(CheckoutRequest.class)))
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
                 .thenThrow(new BadRequestException("Cart is empty"));
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(checkoutRequest)))
                 .andExpect(status().isBadRequest());
 
-        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
     }
 
     @Test
@@ -245,16 +252,17 @@ class OrderControllerTest {
     @DisplayName("应该返回400错误 - 当商品库存不足时")
     void shouldReturnBadRequest_whenInsufficientStock() throws Exception {
         // Arrange
-        when(orderService.checkout(anyString(), any(CheckoutRequest.class)))
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
                 .thenThrow(new BadRequestException("Insufficient stock for phone: iPhone 12 Pro"));
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(checkoutRequest)))
                 .andExpect(status().isBadRequest());
 
-        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
     }
 
     @Test
@@ -262,16 +270,17 @@ class OrderControllerTest {
     @DisplayName("应该返回404错误 - 当购物车中的商品不存在时")
     void shouldReturnNotFound_whenPhoneInCartNotFound() throws Exception {
         // Arrange
-        when(orderService.checkout(anyString(), any(CheckoutRequest.class)))
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
                 .thenThrow(new ResourceNotFoundException("Phone not found"));
 
         // Act & Assert
         mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(checkoutRequest)))
                 .andExpect(status().isNotFound());
 
-        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
     }
 
     @Test
@@ -279,16 +288,61 @@ class OrderControllerTest {
     @DisplayName("应该返回400错误 - 当商品已禁用时")
     void shouldReturnBadRequest_whenPhoneIsDisabled() throws Exception {
         // Arrange
-        when(orderService.checkout(anyString(), any(CheckoutRequest.class)))
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
                 .thenThrow(new BadRequestException("Phone is disabled: iPhone 12 Pro"));
 
         // Act & Assert
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(checkoutRequest)))
+                .andExpect(status().isBadRequest());
+
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
+    }
+
+    @Test
+    @WithMockUser(username = "user123", roles = "USER")
+    @DisplayName("应该返回200 - 当同一个幂等键被重放时")
+    void shouldReturnOk_whenIdempotencyKeyReplayed() throws Exception {
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
+                .thenReturn(CheckoutResult.replayed(orderResponse));
+
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", IDEMPOTENCY_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(checkoutRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Order replayed successfully"))
+                .andExpect(jsonPath("$.data.id").value("order123"));
+
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
+    }
+
+    @Test
+    @WithMockUser(username = "user123", roles = "USER")
+    @DisplayName("应该返回400错误 - 当缺少幂等键请求头时")
+    void shouldReturnBadRequest_whenIdempotencyKeyMissing() throws Exception {
         mockMvc.perform(post("/api/orders/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(checkoutRequest)))
                 .andExpect(status().isBadRequest());
 
-        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class));
+        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "user123", roles = "USER")
+    @DisplayName("应该返回400错误 - 当幂等键不是UUID时")
+    void shouldReturnBadRequest_whenIdempotencyKeyInvalidUuid() throws Exception {
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", "not-a-uuid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(checkoutRequest)))
+                .andExpect(status().isBadRequest());
+
+        verify(orderService, never()).checkout(anyString(), any(CheckoutRequest.class), anyString());
     }
 
     // ==================== 获取用户订单列表端点测试 ====================

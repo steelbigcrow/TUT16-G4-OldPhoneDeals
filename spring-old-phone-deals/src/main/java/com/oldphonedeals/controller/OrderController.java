@@ -4,8 +4,10 @@ import com.oldphonedeals.dto.request.order.CheckoutRequest;
 import com.oldphonedeals.dto.response.ApiResponse;
 import com.oldphonedeals.dto.response.order.OrderPageResponse;
 import com.oldphonedeals.dto.response.order.OrderResponse;
+import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.security.SecurityContextHelper;
 import com.oldphonedeals.service.OrderService;
+import com.oldphonedeals.service.result.CheckoutResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 订单控制器
@@ -63,16 +66,21 @@ public class OrderController {
     @PostMapping("/checkout")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
-            @Valid @RequestBody CheckoutRequest request
+            @Valid @RequestBody CheckoutRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey
     ) {
+        validateIdempotencyKey(idempotencyKey);
+
         String userId = SecurityContextHelper.getCurrentUserId();
         log.info("POST /api/orders/checkout - Checking out for user: {}", userId);
         
-        OrderResponse response = orderService.checkout(userId, request);
+        CheckoutResult result = orderService.checkout(userId, request, idempotencyKey);
+        HttpStatus status = result.isReplayed() ? HttpStatus.OK : HttpStatus.CREATED;
+        String message = result.isReplayed() ? "Order replayed successfully" : "Order created successfully";
         
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Order created successfully"));
+                .status(status)
+                .body(ApiResponse.success(result.getOrder(), message));
     }
 
     /**
@@ -176,5 +184,13 @@ public class OrderController {
         return ResponseEntity.ok(
             ApiResponse.success(response, "Order retrieved successfully")
         );
+    }
+
+    private void validateIdempotencyKey(String idempotencyKey) {
+        try {
+            UUID.fromString(idempotencyKey);
+        } catch (RuntimeException ex) {
+            throw new BadRequestException("Idempotency-Key must be a valid UUID");
+        }
     }
 }

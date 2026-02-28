@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -17,10 +17,61 @@ const addressSchema = z.object({
 })
 
 type AddressValues = z.infer<typeof addressSchema>
+const CHECKOUT_PENDING_IDEMPOTENCY_KEY_STORAGE = 'checkout_pending_idempotency_key'
 
 function formatPrice(price: number | null | undefined) {
   if (price == null) return '—'
   return `$${price.toFixed(2)}`
+}
+
+function getPendingIdempotencyKey() {
+  try {
+    return sessionStorage.getItem(CHECKOUT_PENDING_IDEMPOTENCY_KEY_STORAGE)
+  } catch {
+    return null
+  }
+}
+
+function setPendingIdempotencyKey(idempotencyKey: string) {
+  try {
+    sessionStorage.setItem(CHECKOUT_PENDING_IDEMPOTENCY_KEY_STORAGE, idempotencyKey)
+  } catch {
+    // ignore
+  }
+}
+
+function clearPendingIdempotencyKey() {
+  try {
+    sessionStorage.removeItem(CHECKOUT_PENDING_IDEMPOTENCY_KEY_STORAGE)
+  } catch {
+    // ignore
+  }
+}
+
+function getOrCreateCheckoutIdempotencyKey() {
+  const pending = getPendingIdempotencyKey()
+  if (pending) return pending
+
+  const created = crypto.randomUUID()
+  setPendingIdempotencyKey(created)
+  return created
+}
+
+function shouldClearPendingIdempotencyKeyOnError(error: unknown) {
+  const maybeStatus = (error as { response?: { status?: number } } | null)?.response?.status
+  if (typeof maybeStatus !== 'number') {
+    return false
+  }
+
+  if (maybeStatus >= 500) {
+    return false
+  }
+
+  if (maybeStatus === 408 || maybeStatus === 409 || maybeStatus === 429) {
+    return false
+  }
+
+  return maybeStatus >= 400 && maybeStatus < 500
 }
 
 export function CheckoutPage() {
@@ -42,6 +93,8 @@ export function CheckoutPage() {
   })
 
   const [orderId, setOrderId] = useState<string | null>(null)
+  const [isSubmitLocked, setIsSubmitLocked] = useState(false)
+  const submitLockedRef = useRef(false)
 
   return (
     <div className='space-y-6'>
@@ -170,16 +223,35 @@ export function CheckoutPage() {
                     return
                   }
 
+                  if (submitLockedRef.current || checkout.isPending) {
+                    return
+                  }
+
+                  submitLockedRef.current = true
+                  setIsSubmitLocked(true)
+                  const idempotencyKey = getOrCreateCheckoutIdempotencyKey()
+
                   try {
-                    const res = await checkout.mutateAsync({ address: parsed.data })
+                    const res = await checkout.mutateAsync({
+                      request: { address: parsed.data },
+                      idempotencyKey,
+                    })
                     if (res.success && res.data?.id) {
                       notifications.success('Checkout successful')
                       setOrderId(res.data.id)
+                      clearPendingIdempotencyKey()
                     } else {
+                      clearPendingIdempotencyKey()
                       notifications.error(res.message ?? 'Checkout failed')
                     }
                   } catch (err) {
+                    if (shouldClearPendingIdempotencyKeyOnError(err)) {
+                      clearPendingIdempotencyKey()
+                    }
                     notifications.error(getApiErrorMessage(err))
+                  } finally {
+                    submitLockedRef.current = false
+                    setIsSubmitLocked(false)
                   }
                 })}
               >
@@ -259,10 +331,10 @@ export function CheckoutPage() {
 
                 <button
                   type='submit'
-                  disabled={checkout.isPending || items.length === 0}
+                  disabled={checkout.isPending || isSubmitLocked || items.length === 0}
                   className='w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50'
                 >
-                  Place order
+                  {checkout.isPending || isSubmitLocked ? 'Submitting…' : 'Place order'}
                 </button>
               </form>
             </div>

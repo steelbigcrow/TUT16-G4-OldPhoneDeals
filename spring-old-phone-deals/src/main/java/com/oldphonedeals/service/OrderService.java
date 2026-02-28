@@ -3,6 +3,7 @@ package com.oldphonedeals.service;
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
 import com.oldphonedeals.dto.response.order.OrderPageResponse;
 import com.oldphonedeals.dto.response.order.OrderResponse;
+import com.oldphonedeals.service.result.CheckoutResult;
 
 import java.util.List;
 
@@ -42,7 +43,7 @@ public interface OrderService {
      * @throws com.oldphonedeals.exception.ResourceNotFoundException 购物车或商品不存在
      * @throws com.oldphonedeals.exception.BadRequestException 购物车为空、商品已禁用或库存不足
      */
-    OrderResponse checkout(String userId, CheckoutRequest request);
+    CheckoutResult checkout(String userId, CheckoutRequest request, String idempotencyKey);
     
     /**
      * 获取用户订单列表

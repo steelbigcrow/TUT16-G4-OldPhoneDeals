@@ -14,11 +14,11 @@ export function useCheckout() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (request: ordersApi.CheckoutRequest) => ordersApi.checkout(request),
+    mutationFn: (args: { request: ordersApi.CheckoutRequest; idempotencyKey: string }) =>
+      ordersApi.checkout(args.request, args.idempotencyKey),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.cart })
       await queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
   })
 }
-

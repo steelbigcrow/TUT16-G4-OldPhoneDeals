@@ -38,6 +38,7 @@ describe('useCheckout()', () => {
       success: true,
       data: { id: 'o1' },
     } as any)
+    const idempotencyKey = '123e4567-e89b-12d3-a456-426614174000'
 
     const { queryClient, Wrapper } = makeWrapper()
     const invalidateSpy = vi
@@ -47,14 +48,16 @@ describe('useCheckout()', () => {
     const { result } = renderHook(() => useCheckout(), { wrapper: Wrapper })
 
     await result.current.mutateAsync({
-      address: { street: '1', city: 'c', state: 's', zip: 'z', country: 'AU' },
+      request: {
+        address: { street: '1', city: 'c', state: 's', zip: 'z', country: 'AU' },
+      },
+      idempotencyKey,
     })
 
     expect(checkoutSpy).toHaveBeenCalledWith({
       address: { street: '1', city: 'c', state: 's', zip: 'z', country: 'AU' },
-    })
+    }, idempotencyKey)
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.cart })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['orders'] })
   })
 })
-

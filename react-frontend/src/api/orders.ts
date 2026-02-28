@@ -6,8 +6,12 @@ export type CheckoutRequest = {
   address: OrderAddressInfo
 }
 
-export async function checkout(request: CheckoutRequest) {
-  const { data } = await apiClient.post<ApiResponse<OrderResponse>>('/orders/checkout', request)
+export async function checkout(request: CheckoutRequest, idempotencyKey: string) {
+  const { data } = await apiClient.post<ApiResponse<OrderResponse>>('/orders/checkout', request, {
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+    },
+  })
   return data
 }
 
@@ -17,4 +21,3 @@ export async function getOrders(page: number, pageSize: number) {
   })
   return data
 }
-

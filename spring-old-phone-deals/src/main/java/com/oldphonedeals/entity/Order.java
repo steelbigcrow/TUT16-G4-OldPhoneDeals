@@ -1,5 +1,6 @@
 package com.oldphonedeals.entity;
 
+import com.oldphonedeals.enums.OrderCheckoutStatus;
 import com.oldphonedeals.enums.OrderPostProcessStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -17,6 +20,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "orders")
+@CompoundIndexes({
+    @CompoundIndex(
+        name = "uk_order_user_idempotency",
+        def = "{'userId': 1, 'idempotencyKey': 1}",
+        unique = true,
+        partialFilter = "{'idempotencyKey': {'$exists': true}}"
+    )
+})
 public class Order {
     
     @Id
@@ -29,6 +40,13 @@ public class Order {
     private Double totalAmount;
     
     private Address address;
+
+    private String idempotencyKey;
+
+    @Builder.Default
+    private OrderCheckoutStatus checkoutStatus = OrderCheckoutStatus.PROCESSING;
+
+    private String checkoutError;
 
     @Builder.Default
     private OrderPostProcessStatus postProcessStatus = OrderPostProcessStatus.PENDING;
