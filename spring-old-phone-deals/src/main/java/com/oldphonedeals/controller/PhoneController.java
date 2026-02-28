@@ -151,6 +151,7 @@ public class PhoneController {
     ApiResponse<String> response = phoneService.togglePhoneDisabled(
         phoneId,
         request.getIsDisabled(),
+        request.getVersion(),
         userId
     );
 

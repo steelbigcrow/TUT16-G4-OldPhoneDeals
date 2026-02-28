@@ -11,6 +11,7 @@ import com.oldphonedeals.entity.User;
 import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
+import com.oldphonedeals.exception.VersionConflictException;
 import com.oldphonedeals.repository.CartRepository;
 import com.oldphonedeals.repository.PhoneRepository;
 import com.oldphonedeals.repository.UserRepository;
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -154,6 +156,38 @@ class PhoneServiceTest {
 
         // Assert
         assertNotNull(response);
+        verify(phoneRepository, times(1)).findById("phone-id");
+        verify(phoneRepository, times(1)).save(any(Phone.class));
+    }
+
+    @Test
+    void testUpdatePhone_WithStaleVersion_ThrowsVersionConflict() {
+        // Arrange
+        testPhone.setVersion(2L);
+        updateRequest.setVersion(1L);
+        when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+
+        // Act & Assert
+        assertThrows(VersionConflictException.class, () -> {
+            phoneService.updatePhone("phone-id", updateRequest, "seller-id");
+        });
+        verify(phoneRepository, times(1)).findById("phone-id");
+        verify(phoneRepository, never()).save(any(Phone.class));
+    }
+
+    @Test
+    void testUpdatePhone_WhenOptimisticLockFails_ThrowsVersionConflict() {
+        // Arrange
+        testPhone.setVersion(1L);
+        updateRequest.setVersion(1L);
+        when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+        when(phoneRepository.save(any(Phone.class)))
+                .thenThrow(new OptimisticLockingFailureException("conflict"));
+
+        // Act & Assert
+        assertThrows(VersionConflictException.class, () -> {
+            phoneService.updatePhone("phone-id", updateRequest, "seller-id");
+        });
         verify(phoneRepository, times(1)).findById("phone-id");
         verify(phoneRepository, times(1)).save(any(Phone.class));
     }
@@ -463,7 +497,7 @@ class PhoneServiceTest {
         when(phoneRepository.save(any(Phone.class))).thenReturn(testPhone);
 
         // Act
-        ApiResponse<String> response = phoneService.togglePhoneDisabled("phone-id", true, "seller-id");
+        ApiResponse<String> response = phoneService.togglePhoneDisabled("phone-id", true, null, "seller-id");
 
         // Assert
         assertNotNull(response);
@@ -479,7 +513,7 @@ class PhoneServiceTest {
 
         // Act & Assert
         assertThrows(UnauthorizedException.class, () -> {
-            phoneService.togglePhoneDisabled("phone-id", true, "other-seller-id");
+            phoneService.togglePhoneDisabled("phone-id", true, null, "other-seller-id");
         });
         verify(phoneRepository, times(1)).findById("phone-id");
         verify(phoneRepository, never()).save(any(Phone.class));

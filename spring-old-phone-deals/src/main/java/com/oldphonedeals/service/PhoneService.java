@@ -124,10 +124,11 @@ public interface PhoneService {
      * 
      * @param phoneId 商品 ID
      * @param isDisabled 是否禁用
+     * @param version 乐观锁版本号（可选）
      * @param sellerId 卖家 ID（从 JWT 获取）
      * @return 操作结果消息
      */
-    ApiResponse<String> togglePhoneDisabled(String phoneId, Boolean isDisabled, String sellerId);
+    ApiResponse<String> togglePhoneDisabled(String phoneId, Boolean isDisabled, Long version, String sellerId);
 
     /**
      * 获取卖家的所有商品

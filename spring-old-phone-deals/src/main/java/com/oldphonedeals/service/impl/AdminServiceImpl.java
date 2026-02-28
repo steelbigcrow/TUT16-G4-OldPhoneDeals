@@ -14,12 +14,14 @@ import com.oldphonedeals.enums.TargetType;
 import com.oldphonedeals.exception.ForbiddenException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
+import com.oldphonedeals.exception.VersionConflictException;
 import com.oldphonedeals.repository.*;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.AdminLogService;
 import com.oldphonedeals.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
@@ -609,6 +611,10 @@ public class AdminServiceImpl implements AdminService {
         Phone phone = phoneRepository.findById(phoneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phone not found"));
 
+        if (request.getVersion() != null && !request.getVersion().equals(phone.getVersion())) {
+            throw new VersionConflictException("Version conflict: resource was modified by another request");
+        }
+
         if (request.getTitle() != null) {
             phone.setTitle(request.getTitle());
         }
@@ -625,7 +631,12 @@ public class AdminServiceImpl implements AdminService {
             phone.setIsDisabled(request.getIsDisabled());
         }
 
-        phoneRepository.save(phone);
+        Phone savedPhone;
+        try {
+            savedPhone = phoneRepository.save(phone);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new VersionConflictException("Version conflict: resource was modified by another request", ex);
+        }
 
         // 记录日志
         adminLogService.logAction(adminId, AdminAction.UPDATE_PHONE, TargetType.PHONE, 
@@ -633,7 +644,7 @@ public class AdminServiceImpl implements AdminService {
 
         log.info("Phone {} updated by admin {}", phoneId, adminId);
 
-        return convertToPhoneManagementResponse(phone);
+        return convertToPhoneManagementResponse(savedPhone);
     }
 
     @Override
@@ -643,17 +654,22 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Phone not found"));
 
         phone.setIsDisabled(!phone.getIsDisabled());
-        phoneRepository.save(phone);
+        Phone savedPhone;
+        try {
+            savedPhone = phoneRepository.save(phone);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new VersionConflictException("Version conflict: resource was modified by another request", ex);
+        }
 
         // 记录日志
-        AdminAction action = phone.getIsDisabled() ? AdminAction.DISABLE_PHONE : AdminAction.ENABLE_PHONE;
+        AdminAction action = savedPhone.getIsDisabled() ? AdminAction.DISABLE_PHONE : AdminAction.ENABLE_PHONE;
         adminLogService.logAction(adminId, action, TargetType.PHONE, 
                 phoneId, "Toggled phone disabled status");
 
         log.info("Phone {} status toggled to disabled={} by admin {}", 
-                phoneId, phone.getIsDisabled(), adminId);
+                phoneId, savedPhone.getIsDisabled(), adminId);
 
-        return convertToPhoneManagementResponse(phone);
+        return convertToPhoneManagementResponse(savedPhone);
     }
 
     @Override

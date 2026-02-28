@@ -13,6 +13,7 @@ import com.oldphonedeals.entity.User;
 import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
+import com.oldphonedeals.exception.VersionConflictException;
 import com.oldphonedeals.repository.CartRepository;
 import com.oldphonedeals.repository.PhoneRepository;
 import com.oldphonedeals.repository.UserRepository;
@@ -21,6 +22,7 @@ import com.oldphonedeals.service.PhoneService;
 import com.oldphonedeals.service.ReviewService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -127,6 +129,11 @@ public class PhoneServiceImpl implements PhoneService {
       throw new UnauthorizedException("You are not authorized to update this phone");
     }
 
+    // 可选版本校验：当客户端提供版本号时，先快速失败，返回 409
+    if (request.getVersion() != null && !request.getVersion().equals(phone.getVersion())) {
+      throw new VersionConflictException("Version conflict: resource was modified by another request");
+    }
+
     // 更新字段（只更新非null的字段）
     if (request.getTitle() != null) {
       phone.setTitle(request.getTitle());
@@ -156,7 +163,12 @@ public class PhoneServiceImpl implements PhoneService {
     }
 
     // 保存更新
-    Phone updatedPhone = phoneRepository.save(phone);
+    Phone updatedPhone;
+    try {
+      updatedPhone = phoneRepository.save(phone);
+    } catch (OptimisticLockingFailureException ex) {
+      throw new VersionConflictException("Version conflict: resource was modified by another request", ex);
+    }
 
     log.info("Phone updated successfully: {}", phoneId);
 
@@ -425,7 +437,12 @@ public class PhoneServiceImpl implements PhoneService {
    */
   @Override
   @Transactional
-  public ApiResponse<String> togglePhoneDisabled(String phoneId, Boolean isDisabled, String sellerId) {
+  public ApiResponse<String> togglePhoneDisabled(
+      String phoneId,
+      Boolean isDisabled,
+      Long version,
+      String sellerId
+  ) {
     log.info("Toggling phone disabled status: phoneId={}, isDisabled={}, sellerId={}",
         phoneId, isDisabled, sellerId);
 
@@ -438,9 +455,19 @@ public class PhoneServiceImpl implements PhoneService {
       throw new UnauthorizedException("You are not authorized to update this phone");
     }
 
+    // 可选版本校验：当客户端提供版本号时，先快速失败，返回 409
+    if (version != null && !version.equals(phone.getVersion())) {
+      throw new VersionConflictException("Version conflict: resource was modified by another request");
+    }
+
     // 3. 更新状态
     phone.setIsDisabled(isDisabled);
-    phoneRepository.save(phone);
+
+    try {
+      phoneRepository.save(phone);
+    } catch (OptimisticLockingFailureException ex) {
+      throw new VersionConflictException("Version conflict: resource was modified by another request", ex);
+    }
 
     String message = isDisabled ? "Phone disabled successfully" : "Phone enabled successfully";
     log.info(message + ": {}", phoneId);
