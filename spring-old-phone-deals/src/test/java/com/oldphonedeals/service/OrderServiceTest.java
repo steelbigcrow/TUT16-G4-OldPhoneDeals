@@ -11,6 +11,7 @@ import com.oldphonedeals.entity.User;
 import com.oldphonedeals.enums.OrderCheckoutStatus;
 import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.BadRequestException;
+import com.oldphonedeals.exception.DuplicateResourceException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.producer.OrderMessageProducer;
 import com.oldphonedeals.repository.CartRepository;
@@ -30,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,7 +39,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.atLeastOnce;
@@ -301,6 +305,72 @@ class OrderServiceTest {
         assertEquals("order-replayed", result.getOrder().getId());
         verify(phoneStockRepository, never()).decreaseStockAndIncreaseSales(any(), anyInt());
         verify(orderMessageProducer, never()).publishOrderPostProcessMessage(any(OrderPostProcessMessage.class));
+    }
+
+    @Test
+    void shouldNormalizeIdempotencyKeyInServiceLayer() {
+        String uppercaseUuid = IDEMPOTENCY_KEY.toUpperCase(Locale.ROOT);
+        when(orderRepository.findByUserIdAndIdempotencyKey(eq("user-id"), anyString()))
+            .thenReturn(Optional.of(buildCompletedOrder("order-replayed")));
+
+        CheckoutResult result = orderService.checkout("user-id", checkoutRequest, uppercaseUuid);
+
+        assertTrue(result.isReplayed());
+        assertEquals("order-replayed", result.getOrder().getId());
+
+        ArgumentCaptor<String> idempotencyKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(orderRepository, atLeastOnce()).findByUserIdAndIdempotencyKey(eq("user-id"), idempotencyKeyCaptor.capture());
+        assertTrue(idempotencyKeyCaptor.getAllValues().stream().allMatch(IDEMPOTENCY_KEY::equals));
+        verify(orderRepository, never()).insert(any(Order.class));
+    }
+
+    @Test
+    void shouldRejectReplayedIdempotencyKeyWhenRequestPayloadDiffers() {
+        when(orderRepository.findByUserIdAndIdempotencyKey("user-id", IDEMPOTENCY_KEY))
+            .thenReturn(Optional.of(buildCompletedOrder("order-replayed")));
+
+        CheckoutRequest differentRequest = CheckoutRequest.builder()
+            .address(CheckoutRequest.AddressInfo.builder()
+                .street("999 Other St")
+                .city("Sydney")
+                .state("NSW")
+                .zip("2000")
+                .country("Australia")
+                .build())
+            .build();
+
+        assertThrows(DuplicateResourceException.class, () ->
+            orderService.checkout("user-id", differentRequest, IDEMPOTENCY_KEY)
+        );
+
+        verify(phoneStockRepository, never()).decreaseStockAndIncreaseSales(any(), anyInt());
+        verify(orderMessageProducer, never()).publishOrderPostProcessMessage(any(OrderPostProcessMessage.class));
+    }
+
+    @Test
+    void shouldFailStaleProcessingCheckoutToPreventInfiniteReplays() {
+        Order processingOrder = Order.builder()
+            .id("order-processing")
+            .userId("user-id")
+            .idempotencyKey(IDEMPOTENCY_KEY)
+            .checkoutStatus(OrderCheckoutStatus.PROCESSING)
+            .checkoutError(null)
+            .items(List.of())
+            .totalAmount(0.0)
+            .createdAt(LocalDateTime.now().minusMinutes(10))
+            .build();
+
+        when(orderRepository.findByUserIdAndIdempotencyKey("user-id", IDEMPOTENCY_KEY))
+            .thenReturn(Optional.of(processingOrder));
+        when(orderRepository.findById("order-processing")).thenReturn(Optional.of(processingOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () ->
+            orderService.checkout("user-id", checkoutRequest, IDEMPOTENCY_KEY)
+        );
+
+        assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("timed out"));
+        verify(orderRepository, atLeastOnce()).save(argThat(order -> order.getCheckoutStatus() == OrderCheckoutStatus.FAILED));
     }
 
     @Test

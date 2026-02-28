@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -316,6 +317,24 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Order replayed successfully"))
                 .andExpect(jsonPath("$.data.id").value("order123"));
+
+        verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
+    }
+
+    @Test
+    @WithMockUser(username = "user123", roles = "USER")
+    @DisplayName("应该规范化幂等键UUID（大小写不敏感）并传递给服务层")
+    void shouldNormalizeIdempotencyKey_whenUuidUsesUppercaseLetters() throws Exception {
+        when(orderService.checkout(anyString(), any(CheckoutRequest.class), anyString()))
+                .thenReturn(CheckoutResult.created(orderResponse));
+
+        String uppercaseUuid = IDEMPOTENCY_KEY.toUpperCase(Locale.ROOT);
+
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header("Idempotency-Key", uppercaseUuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(checkoutRequest)))
+                .andExpect(status().isCreated());
 
         verify(orderService, times(1)).checkout(anyString(), any(CheckoutRequest.class), eq(IDEMPOTENCY_KEY));
     }

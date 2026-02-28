@@ -69,12 +69,12 @@ public class OrderController {
             @Valid @RequestBody CheckoutRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey
     ) {
-        validateIdempotencyKey(idempotencyKey);
+        String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
 
         String userId = SecurityContextHelper.getCurrentUserId();
         log.info("POST /api/orders/checkout - Checking out for user: {}", userId);
         
-        CheckoutResult result = orderService.checkout(userId, request, idempotencyKey);
+        CheckoutResult result = orderService.checkout(userId, request, normalizedIdempotencyKey);
         HttpStatus status = result.isReplayed() ? HttpStatus.OK : HttpStatus.CREATED;
         String message = result.isReplayed() ? "Order replayed successfully" : "Order created successfully";
         
@@ -186,9 +186,12 @@ public class OrderController {
         );
     }
 
-    private void validateIdempotencyKey(String idempotencyKey) {
+    private String normalizeIdempotencyKey(String idempotencyKey) {
         try {
-            UUID.fromString(idempotencyKey);
+            if (idempotencyKey == null) {
+                throw new BadRequestException("Idempotency-Key must be a valid UUID");
+            }
+            return UUID.fromString(idempotencyKey.trim()).toString();
         } catch (RuntimeException ex) {
             throw new BadRequestException("Idempotency-Key must be a valid UUID");
         }

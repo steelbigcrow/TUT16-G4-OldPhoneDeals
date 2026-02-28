@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,6 +47,7 @@ public class OrderServiceImpl implements OrderService {
 
     private static final int REPLAY_WAIT_MAX_ATTEMPTS = 20;
     private static final long REPLAY_WAIT_MILLIS = 100L;
+    private static final long PROCESSING_STALE_AFTER_SECONDS = 120L;
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -56,18 +58,21 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public CheckoutResult checkout(String userId, CheckoutRequest request, String idempotencyKey) {
-        log.debug("Starting checkout for user: {}, idempotencyKey: {}", userId, idempotencyKey);
+        String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+        String requestSignature = buildCheckoutRequestSignature(request);
 
-        var existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
+        log.debug("Starting checkout for user: {}, idempotencyKey: {}", userId, normalizedIdempotencyKey);
+
+        var existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, normalizedIdempotencyKey);
         if (existingOrder != null && existingOrder.isPresent()) {
-            return replayExistingCheckout(userId, idempotencyKey);
+            return replayExistingCheckout(userId, normalizedIdempotencyKey, requestSignature);
         }
 
         Order processingOrder;
         try {
-            processingOrder = orderRepository.insert(buildProcessingOrder(userId, request, idempotencyKey));
+            processingOrder = orderRepository.insert(buildProcessingOrder(userId, request, normalizedIdempotencyKey));
         } catch (DuplicateKeyException ex) {
-            return replayExistingCheckout(userId, idempotencyKey);
+            return replayExistingCheckout(userId, normalizedIdempotencyKey, requestSignature);
         }
 
         try {
@@ -270,7 +275,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
-    private CheckoutResult replayExistingCheckout(String userId, String idempotencyKey) {
+    private CheckoutResult replayExistingCheckout(String userId, String idempotencyKey, String requestSignature) {
         for (int attempt = 0; attempt < REPLAY_WAIT_MAX_ATTEMPTS; attempt++) {
             Order existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey)
                     .orElse(null);
@@ -279,6 +284,8 @@ public class OrderServiceImpl implements OrderService {
                 pauseReplayPoll();
                 continue;
             }
+
+            validateRequestReplayMatches(existingOrder, requestSignature);
 
             OrderCheckoutStatus status = existingOrder.getCheckoutStatus();
             if (status == null || status == OrderCheckoutStatus.COMPLETED) {
@@ -293,10 +300,92 @@ public class OrderServiceImpl implements OrderService {
                 throw new BadRequestException(errorMessage);
             }
 
+            if (isStaleProcessingCheckout(existingOrder)) {
+                String message = "Checkout timed out. Please try again.";
+                markCheckoutFailed(existingOrder.getId(), message);
+                throw new BadRequestException(message);
+            }
+
             pauseReplayPoll();
         }
 
         throw new DuplicateResourceException("Checkout is still processing for this idempotency key");
+    }
+
+    private String normalizeIdempotencyKey(String idempotencyKey) {
+        try {
+            if (idempotencyKey == null) {
+                throw new BadRequestException("Idempotency-Key must be a valid UUID");
+            }
+            return UUID.fromString(idempotencyKey.trim()).toString();
+        } catch (RuntimeException ex) {
+            throw new BadRequestException("Idempotency-Key must be a valid UUID");
+        }
+    }
+
+    private static String normalizeSignaturePart(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private String buildCheckoutRequestSignature(CheckoutRequest request) {
+        if (request == null || request.getAddress() == null) {
+            return "";
+        }
+
+        CheckoutRequest.AddressInfo address = request.getAddress();
+        return String.join("|",
+            normalizeSignaturePart(address.getStreet()),
+            normalizeSignaturePart(address.getCity()),
+            normalizeSignaturePart(address.getState()),
+            normalizeSignaturePart(address.getZip()),
+            normalizeSignaturePart(address.getCountry())
+        );
+    }
+
+    private String buildExistingOrderSignature(Order order) {
+        if (order == null || order.getAddress() == null) {
+            return "";
+        }
+
+        Order.Address address = order.getAddress();
+        return String.join("|",
+            normalizeSignaturePart(address.getStreet()),
+            normalizeSignaturePart(address.getCity()),
+            normalizeSignaturePart(address.getState()),
+            normalizeSignaturePart(address.getZip()),
+            normalizeSignaturePart(address.getCountry())
+        );
+    }
+
+    private void validateRequestReplayMatches(Order existingOrder, String requestSignature) {
+        if (existingOrder == null) {
+            return;
+        }
+
+        String existingSignature = buildExistingOrderSignature(existingOrder);
+        if (existingSignature.isBlank() || requestSignature == null || requestSignature.isBlank()) {
+            return;
+        }
+
+        if (!existingSignature.equals(requestSignature)) {
+            throw new DuplicateResourceException("Idempotency-Key already used for a different checkout request");
+        }
+    }
+
+    private boolean isStaleProcessingCheckout(Order order) {
+        if (order == null || order.getCheckoutStatus() != OrderCheckoutStatus.PROCESSING) {
+            return false;
+        }
+
+        LocalDateTime createdAt = order.getCreatedAt();
+        if (createdAt == null) {
+            return false;
+        }
+
+        return createdAt.isBefore(LocalDateTime.now().minusSeconds(PROCESSING_STALE_AFTER_SECONDS));
     }
 
     private void pauseReplayPoll() {
