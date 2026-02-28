@@ -251,6 +251,7 @@ public class PhoneServiceImpl implements PhoneService {
     // 构建响应
     return PhoneResponse.builder()
         .id(phone.getId())
+        .version(phone.getVersion())
         .title(phone.getTitle())
         .brand(phone.getBrand())
         .image(phone.getImage())
@@ -530,6 +531,7 @@ public class PhoneServiceImpl implements PhoneService {
   private PhoneListItemResponse convertToPhoneListItemResponse(Phone phone) {
     return PhoneListItemResponse.builder()
         .id(phone.getId())
+        .version(phone.getVersion())
         .title(phone.getTitle())
         .brand(phone.getBrand())
         .image(phone.getImage())

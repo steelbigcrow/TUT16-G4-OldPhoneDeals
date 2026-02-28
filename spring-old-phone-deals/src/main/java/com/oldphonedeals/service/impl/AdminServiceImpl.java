@@ -1280,6 +1280,7 @@ public class AdminServiceImpl implements AdminService {
 
         return PhoneManagementResponse.builder()
                 .id(phone.getId())
+                .version(phone.getVersion())
                 .title(phone.getTitle())
                 .brand(phone.getBrand())
                 .image(phone.getImage())

@@ -21,6 +21,11 @@ public class PhoneListItemResponse {
      * 商品ID
      */
     private String id;
+
+    /**
+     * 乐观锁版本号（用于并发更新冲突检测）
+     */
+    private Long version;
     
     /**
      * 商品标题
