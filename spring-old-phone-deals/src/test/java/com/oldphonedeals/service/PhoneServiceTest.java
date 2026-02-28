@@ -12,6 +12,7 @@ import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
 import com.oldphonedeals.exception.VersionConflictException;
+import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.repository.CartRepository;
 import com.oldphonedeals.repository.PhoneRepository;
 import com.oldphonedeals.repository.UserRepository;
@@ -82,6 +83,7 @@ class PhoneServiceTest {
         // 创建测试用商品
         testPhone = Phone.builder()
                 .id("phone-id")
+                .version(1L)
                 .title("Test Phone")
                 .brand(PhoneBrand.SAMSUNG)
                 .image("test.jpg")
@@ -106,6 +108,7 @@ class PhoneServiceTest {
                 .build();
 
         updateRequest = PhoneUpdateRequest.builder()
+                .version(1L)
                 .title("Updated Phone")
                 .price(899.99)
                 .build();
@@ -126,6 +129,7 @@ class PhoneServiceTest {
         assertNotNull(response);
         assertEquals(testPhone.getId(), response.getId());
         assertEquals(testPhone.getTitle(), response.getTitle());
+        assertEquals(testPhone.getVersion(), response.getVersion());
         verify(userRepository, times(1)).findById("seller-id");
         verify(phoneRepository, times(1)).save(any(Phone.class));
     }
@@ -156,8 +160,29 @@ class PhoneServiceTest {
 
         // Assert
         assertNotNull(response);
+        assertEquals(testPhone.getVersion(), response.getVersion());
         verify(phoneRepository, times(1)).findById("phone-id");
         verify(phoneRepository, times(1)).save(any(Phone.class));
+    }
+
+    @Test
+    void testUpdatePhone_MissingVersion_ThrowsBadRequest() {
+        // Arrange
+        PhoneUpdateRequest requestWithoutVersion = PhoneUpdateRequest.builder()
+                .title("Updated Phone")
+                .price(899.99)
+                .build();
+
+        when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+        when(phoneRepository.save(any(Phone.class))).thenReturn(testPhone);
+
+        // Act & Assert
+        assertThrows(BadRequestException.class, () -> {
+            phoneService.updatePhone("phone-id", requestWithoutVersion, "seller-id");
+        });
+
+        verify(phoneRepository, times(1)).findById("phone-id");
+        verify(phoneRepository, never()).save(any(Phone.class));
     }
 
     @Test
@@ -497,7 +522,7 @@ class PhoneServiceTest {
         when(phoneRepository.save(any(Phone.class))).thenReturn(testPhone);
 
         // Act
-        ApiResponse<String> response = phoneService.togglePhoneDisabled("phone-id", true, null, "seller-id");
+        ApiResponse<String> response = phoneService.togglePhoneDisabled("phone-id", true, 1L, "seller-id");
 
         // Assert
         assertNotNull(response);
@@ -507,13 +532,27 @@ class PhoneServiceTest {
     }
 
     @Test
+    void testTogglePhoneDisabled_MissingVersion_ThrowsBadRequest() {
+        // Arrange
+        when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
+
+        // Act & Assert
+        assertThrows(BadRequestException.class, () -> {
+            phoneService.togglePhoneDisabled("phone-id", true, null, "seller-id");
+        });
+
+        verify(phoneRepository, times(1)).findById("phone-id");
+        verify(phoneRepository, never()).save(any(Phone.class));
+    }
+
+    @Test
     void testTogglePhoneDisabled_UnauthorizedSeller_ThrowsException() {
         // Arrange
         when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
 
         // Act & Assert
         assertThrows(UnauthorizedException.class, () -> {
-            phoneService.togglePhoneDisabled("phone-id", true, null, "other-seller-id");
+            phoneService.togglePhoneDisabled("phone-id", true, 1L, "other-seller-id");
         });
         verify(phoneRepository, times(1)).findById("phone-id");
         verify(phoneRepository, never()).save(any(Phone.class));

@@ -19,6 +19,7 @@ export type PhoneListItemSellerInfo = {
 
 export type PhoneListItemResponse = {
   id: string;
+  version: number;
   title: string;
   brand: PhoneBrand;
   image: string;
@@ -38,6 +39,7 @@ export type PhoneSellerInfo = {
 
 export type PhoneResponse = {
   id: string;
+  version: number;
   title: string;
   brand: PhoneBrand;
   image: string;

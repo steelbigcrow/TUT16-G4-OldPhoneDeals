@@ -317,6 +317,7 @@ export function ProfileListingsPage() {
                               const res = await toggleDisabled.mutateAsync({
                                 phoneId: p.id,
                                 isDisabled: next,
+                                version: p.version,
                               })
                               if (res.success) notifications.info('Listing status updated')
                               else notifications.error(res.message ?? 'Failed to update listing')

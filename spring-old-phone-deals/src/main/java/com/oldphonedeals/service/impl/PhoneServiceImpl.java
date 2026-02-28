@@ -13,6 +13,7 @@ import com.oldphonedeals.entity.User;
 import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
+import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.exception.VersionConflictException;
 import com.oldphonedeals.repository.CartRepository;
 import com.oldphonedeals.repository.PhoneRepository;
@@ -130,7 +131,11 @@ public class PhoneServiceImpl implements PhoneService {
     }
 
     // 可选版本校验：当客户端提供版本号时，先快速失败，返回 409
-    if (request.getVersion() != null && !request.getVersion().equals(phone.getVersion())) {
+    if (request.getVersion() == null) {
+      throw new BadRequestException("version is required");
+    }
+
+    if (!request.getVersion().equals(phone.getVersion())) {
       throw new VersionConflictException("Version conflict: resource was modified by another request");
     }
 
@@ -456,7 +461,11 @@ public class PhoneServiceImpl implements PhoneService {
     }
 
     // 可选版本校验：当客户端提供版本号时，先快速失败，返回 409
-    if (version != null && !version.equals(phone.getVersion())) {
+    if (version == null) {
+      throw new BadRequestException("version is required");
+    }
+
+    if (!version.equals(phone.getVersion())) {
       throw new VersionConflictException("Version conflict: resource was modified by another request");
     }
 
@@ -537,6 +546,7 @@ public class PhoneServiceImpl implements PhoneService {
 
     return PhoneResponse.builder()
         .id(phone.getId())
+        .version(phone.getVersion())
         .title(phone.getTitle())
         .brand(phone.getBrand())
         .image(phone.getImage())

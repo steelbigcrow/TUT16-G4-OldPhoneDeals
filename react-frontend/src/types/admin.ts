@@ -43,6 +43,7 @@ export type PhoneManagementSellerInfo = {
 
 export type PhoneManagementResponse = {
   id: string
+  version: number
   title: string
   brand: PhoneBrand
   image: string

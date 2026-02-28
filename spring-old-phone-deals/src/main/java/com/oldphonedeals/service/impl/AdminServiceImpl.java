@@ -15,6 +15,7 @@ import com.oldphonedeals.exception.ForbiddenException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
 import com.oldphonedeals.exception.VersionConflictException;
+import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.repository.*;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.AdminLogService;
@@ -611,7 +612,11 @@ public class AdminServiceImpl implements AdminService {
         Phone phone = phoneRepository.findById(phoneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phone not found"));
 
-        if (request.getVersion() != null && !request.getVersion().equals(phone.getVersion())) {
+        if (request.getVersion() == null) {
+            throw new BadRequestException("version is required");
+        }
+
+        if (!request.getVersion().equals(phone.getVersion())) {
             throw new VersionConflictException("Version conflict: resource was modified by another request");
         }
 
@@ -649,11 +654,26 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public PhoneManagementResponse togglePhoneStatus(String phoneId, String adminId) {
+    public PhoneManagementResponse setPhoneDisabledStatus(
+            String phoneId,
+            Boolean isDisabled,
+            Long version,
+            String adminId
+    ) {
         Phone phone = phoneRepository.findById(phoneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phone not found"));
 
-        phone.setIsDisabled(!phone.getIsDisabled());
+        if (isDisabled == null) {
+            throw new BadRequestException("isDisabled is required");
+        }
+        if (version == null) {
+            throw new BadRequestException("version is required");
+        }
+        if (!version.equals(phone.getVersion())) {
+            throw new VersionConflictException("Version conflict: resource was modified by another request");
+        }
+
+        phone.setIsDisabled(isDisabled);
         Phone savedPhone;
         try {
             savedPhone = phoneRepository.save(phone);
@@ -662,11 +682,13 @@ public class AdminServiceImpl implements AdminService {
         }
 
         // 记录日志
-        AdminAction action = savedPhone.getIsDisabled() ? AdminAction.DISABLE_PHONE : AdminAction.ENABLE_PHONE;
+        AdminAction action = Boolean.TRUE.equals(savedPhone.getIsDisabled())
+                ? AdminAction.DISABLE_PHONE
+                : AdminAction.ENABLE_PHONE;
         adminLogService.logAction(adminId, action, TargetType.PHONE, 
-                phoneId, "Toggled phone disabled status");
+                phoneId, "Set phone disabled status");
 
-        log.info("Phone {} status toggled to disabled={} by admin {}", 
+        log.info("Phone {} status set to disabled={} by admin {}",
                 phoneId, savedPhone.getIsDisabled(), adminId);
 
         return convertToPhoneManagementResponse(savedPhone);

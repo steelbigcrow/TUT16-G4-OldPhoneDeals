@@ -23,6 +23,7 @@ const BRANDS: PhoneBrand[] = [
 ]
 
 type EditValues = {
+  version: number
   title: string
   brand: PhoneBrand
   price: number
@@ -125,8 +126,13 @@ export function AdminPhonesPage() {
                           type='button'
                           disabled={toggle.isPending}
                           onClick={async () => {
+                            const next = !Boolean(p.isDisabled)
                             try {
-                              const res = await toggle.mutateAsync(p.id)
+                              const res = await toggle.mutateAsync({
+                                phoneId: p.id,
+                                isDisabled: next,
+                                version: p.version,
+                              })
                               if (res.success) notifications.success('Phone status updated')
                               else notifications.error(res.message ?? 'Failed to update phone')
                             } catch (err) {
@@ -148,6 +154,7 @@ export function AdminPhonesPage() {
 
                             setEditingPhoneId(p.id)
                             setEditValues({
+                              version: p.version,
                               title: p.title,
                               brand: p.brand,
                               price: p.price ?? 0,

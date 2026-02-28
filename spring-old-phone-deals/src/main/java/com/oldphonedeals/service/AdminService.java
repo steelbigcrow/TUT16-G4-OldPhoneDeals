@@ -150,7 +150,7 @@ public interface AdminService {
      * @param adminId 管理员ID（用于记录日志）
      * @return 更新后的商品信息
      */
-    PhoneManagementResponse togglePhoneStatus(String phoneId, String adminId);
+    PhoneManagementResponse setPhoneDisabledStatus(String phoneId, Boolean isDisabled, Long version, String adminId);
 
     /**
      * 删除商品（级联删除所有关联数据）

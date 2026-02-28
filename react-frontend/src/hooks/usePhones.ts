@@ -82,8 +82,8 @@ export function useTogglePhoneDisabled(sellerId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (args: { phoneId: string; isDisabled: boolean }) =>
-      phonesApi.togglePhoneDisabled(args.phoneId, args.isDisabled),
+    mutationFn: (args: { phoneId: string; isDisabled: boolean; version: number }) =>
+      phonesApi.togglePhoneDisabled(args.phoneId, args.isDisabled, args.version),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['phones'] })
       await queryClient.invalidateQueries({ queryKey: queryKeys.phones.bySeller(sellerId) })

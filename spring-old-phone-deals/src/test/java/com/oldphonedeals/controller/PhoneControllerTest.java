@@ -6,6 +6,7 @@ import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.dto.request.phone.PhoneCreateRequest;
 import com.oldphonedeals.dto.request.phone.PhoneUpdateRequest;
+import com.oldphonedeals.dto.request.phone.TogglePhoneStatusRequest;
 import com.oldphonedeals.dto.response.phone.PhoneListItemResponse;
 import com.oldphonedeals.dto.response.phone.PhoneResponse;
 import com.oldphonedeals.enums.PhoneBrand;
@@ -105,6 +106,7 @@ class PhoneControllerTest {
                 .build();
 
         updateRequest = PhoneUpdateRequest.builder()
+                .version(1L)
                 .title("iPhone 12 Pro Max")
                 .brand(PhoneBrand.APPLE)
                 .image("iphone12max.jpg")
@@ -301,6 +303,26 @@ class PhoneControllerTest {
 
     @Test
     @WithMockUser(username = "user123")
+    @DisplayName("testUpdatePhone_MissingVersion_ReturnsBadRequest")
+    void testUpdatePhone_MissingVersion_ReturnsBadRequest() throws Exception {
+        PhoneUpdateRequest requestWithoutVersion = PhoneUpdateRequest.builder()
+                .title("iPhone 12 Pro Max")
+                .brand(PhoneBrand.APPLE)
+                .image("iphone12max.jpg")
+                .stock(5)
+                .price(1099.99)
+                .build();
+
+        mockMvc.perform(put("/api/phones/phone123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithoutVersion)))
+                .andExpect(status().isBadRequest());
+
+        verify(phoneService, never()).updatePhone(anyString(), any(PhoneUpdateRequest.class), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "user123")
     @DisplayName("testUpdatePhone_UnauthorizedUser_ReturnsForbidden")
     void testUpdatePhone_UnauthorizedUser_ReturnsForbidden() throws Exception {
         // Arrange
@@ -334,6 +356,21 @@ class PhoneControllerTest {
     }
 
     // ==================== 删除商品端点测试 ====================
+
+    @Test
+    @WithMockUser(username = "user123")
+    @DisplayName("testTogglePhoneDisabled_MissingVersion_ReturnsBadRequest")
+    void testTogglePhoneDisabled_MissingVersion_ReturnsBadRequest() throws Exception {
+        TogglePhoneStatusRequest requestWithoutVersion = new TogglePhoneStatusRequest();
+        requestWithoutVersion.setIsDisabled(true);
+
+        mockMvc.perform(put("/api/phones/phone123/disable")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithoutVersion)))
+                .andExpect(status().isBadRequest());
+
+        verify(phoneService, never()).togglePhoneDisabled(anyString(), any(), any(), anyString());
+    }
 
     @Test
     @WithMockUser(username = "user123")

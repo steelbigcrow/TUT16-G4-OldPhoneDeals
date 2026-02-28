@@ -54,7 +54,8 @@ export function useToggleAdminPhoneDisabled() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (phoneId: string) => adminApi.toggleAdminPhoneDisabled(phoneId),
+    mutationFn: (args: { phoneId: string; isDisabled: boolean; version: number }) =>
+      adminApi.toggleAdminPhoneDisabled(args.phoneId, args.isDisabled, args.version),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'phones'] })
     },

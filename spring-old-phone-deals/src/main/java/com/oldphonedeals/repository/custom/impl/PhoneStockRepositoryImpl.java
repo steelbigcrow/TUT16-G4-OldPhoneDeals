@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+
 @Repository
 @RequiredArgsConstructor
 public class PhoneStockRepositoryImpl implements PhoneStockRepository {
@@ -28,7 +30,9 @@ public class PhoneStockRepositoryImpl implements PhoneStockRepository {
 
     Update update = new Update()
       .inc("stock", -quantity)
-      .inc("salesCount", quantity);
+      .inc("salesCount", quantity)
+      .inc("version", 1)
+      .set("updatedAt", LocalDateTime.now());
 
     UpdateResult result = mongoTemplate.updateFirst(query, update, Phone.class);
     return result.getModifiedCount() > 0;

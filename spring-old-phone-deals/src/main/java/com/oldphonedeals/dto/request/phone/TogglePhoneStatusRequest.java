@@ -12,6 +12,7 @@ public class TogglePhoneStatusRequest {
   /**
    * 乐观锁版本号（可选）。
    */
+  @NotNull(message = "version is required")
   private Long version;
 
   /**

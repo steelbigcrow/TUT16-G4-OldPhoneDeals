@@ -26,6 +26,7 @@ public class UpdatePhoneRequest {
      * 当提供该字段时，后端会校验版本是否一致，不一致则返回 409 CONFLICT。
      * </p>
      */
+    @NotNull(message = "version is required")
     private Long version;
 
     /**

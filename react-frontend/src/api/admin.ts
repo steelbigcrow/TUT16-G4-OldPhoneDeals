@@ -62,6 +62,7 @@ export async function getAdminPhones(params: { page: number; pageSize: number })
 }
 
 export type UpdateAdminPhoneRequest = {
+  version: number
   title: string
   brand: PhoneBrand
   price: number
@@ -77,9 +78,10 @@ export async function updateAdminPhone(phoneId: string, request: UpdateAdminPhon
   return data
 }
 
-export async function toggleAdminPhoneDisabled(phoneId: string) {
+export async function toggleAdminPhoneDisabled(phoneId: string, isDisabled: boolean, version: number) {
   const { data } = await apiClient.put<ApiResponse<PhoneManagementResponse>>(
     `/admin/phones/${phoneId}/toggle-disabled`,
+    { isDisabled, version },
   )
   return data
 }

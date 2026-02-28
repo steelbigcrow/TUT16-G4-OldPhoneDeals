@@ -108,6 +108,7 @@ class AdminServiceTest {
         // 创建测试商品
         testPhone = Phone.builder()
                 .id("phone-id")
+                .version(1L)
                 .title("Test Phone")
                 .brand(PhoneBrand.SAMSUNG)
                 .image("test.jpg")
@@ -444,6 +445,7 @@ class AdminServiceTest {
     void testUpdatePhoneByAdmin_Success() {
         // Arrange
         UpdatePhoneRequest request = new UpdatePhoneRequest();
+        request.setVersion(1L);
         request.setTitle("Updated Phone");
         request.setPrice(899.99);
         
@@ -462,7 +464,7 @@ class AdminServiceTest {
     }
 
     @Test
-    void testTogglePhoneStatus_Success() {
+    void testSetPhoneDisabledStatus_Success() {
         // Arrange
         boolean initialStatus = testPhone.getIsDisabled();
         when(phoneRepository.findById("phone-id")).thenReturn(Optional.of(testPhone));
@@ -470,11 +472,12 @@ class AdminServiceTest {
         doNothing().when(adminLogService).logAction(anyString(), any(), any(), anyString(), anyString());
 
         // Act
-        PhoneManagementResponse response = adminService.togglePhoneStatus("phone-id", "admin-id");
+        boolean nextStatus = !initialStatus;
+        PhoneManagementResponse response = adminService.setPhoneDisabledStatus("phone-id", nextStatus, 1L, "admin-id");
 
         // Assert
         assertNotNull(response);
-        assertEquals(!initialStatus, testPhone.getIsDisabled());
+        assertEquals(nextStatus, testPhone.getIsDisabled());
         verify(phoneRepository, times(1)).save(testPhone);
         verify(adminLogService, times(1)).logAction(anyString(), any(), any(), anyString(), anyString());
     }

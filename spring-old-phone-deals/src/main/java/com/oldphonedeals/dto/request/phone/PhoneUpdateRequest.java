@@ -2,6 +2,7 @@ package com.oldphonedeals.dto.request.phone;
 
 import com.oldphonedeals.enums.PhoneBrand;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class PhoneUpdateRequest {
      * 当提供该字段时，后端会校验版本是否一致，不一致则返回 409 CONFLICT。
      * </p>
      */
+    @NotNull(message = "version is required")
     private Long version;
     
     /**

@@ -81,9 +81,10 @@ export async function createPhone(request: CreatePhoneRequest) {
   return data
 }
 
-export async function togglePhoneDisabled(phoneId: string, isDisabled: boolean) {
+export async function togglePhoneDisabled(phoneId: string, isDisabled: boolean, version: number) {
   const { data } = await apiClient.put<ApiResponse<string>>(`/phones/${phoneId}/disable`, {
     isDisabled,
+    version,
   })
   return data
 }

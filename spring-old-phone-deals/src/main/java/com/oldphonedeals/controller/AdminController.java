@@ -3,6 +3,7 @@ package com.oldphonedeals.controller;
 import com.oldphonedeals.dto.request.admin.AdminLoginRequest;
 import com.oldphonedeals.dto.request.admin.UpdatePhoneRequest;
 import com.oldphonedeals.dto.request.admin.UpdateUserRequest;
+import com.oldphonedeals.dto.request.phone.TogglePhoneStatusRequest;
 import com.oldphonedeals.dto.request.profile.UpdateProfileRequest;
 import com.oldphonedeals.dto.response.ApiResponse;
 import com.oldphonedeals.dto.response.PageResponse;
@@ -245,10 +246,16 @@ public class AdminController {
      */
     @PutMapping("/phones/{phoneId}/toggle-disabled")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<PhoneManagementResponse>> togglePhoneStatus(@PathVariable String phoneId) {
+    public ResponseEntity<ApiResponse<PhoneManagementResponse>> togglePhoneStatus(
+            @PathVariable String phoneId,
+            @Valid @RequestBody TogglePhoneStatusRequest request) {
         String adminId = SecurityContextHelper.getCurrentUserId();
-        PhoneManagementResponse response = adminService.togglePhoneStatus(phoneId, adminId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Phone status toggled successfully"));
+        PhoneManagementResponse response = adminService.setPhoneDisabledStatus(
+                phoneId,
+                request.getIsDisabled(),
+                request.getVersion(),
+                adminId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Phone status updated successfully"));
     }
 
     /**

@@ -40,7 +40,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -458,6 +460,7 @@ class AdminControllerTest {
     void testUpdatePhone_ValidRequest_ReturnsUpdatedPhone() throws Exception {
         // Arrange
         UpdatePhoneRequest updateRequest = UpdatePhoneRequest.builder()
+                .version(1L)
                 .title("iPhone 12 Pro Max")
                 .brand(PhoneBrand.APPLE)
                 .price(1099.99)
@@ -480,19 +483,59 @@ class AdminControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    @DisplayName("testUpdatePhone_MissingVersion_ReturnsBadRequest")
+    void testUpdatePhone_MissingVersion_ReturnsBadRequest() throws Exception {
+        UpdatePhoneRequest requestWithoutVersion = UpdatePhoneRequest.builder()
+                .title("iPhone 12 Pro Max")
+                .brand(PhoneBrand.APPLE)
+                .price(1099.99)
+                .stock(15)
+                .build();
+
+        mockMvc.perform(put("/api/admin/phones/phone123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithoutVersion)))
+                .andExpect(status().isBadRequest());
+
+        verify(adminService, never()).updatePhoneByAdmin(anyString(), any(UpdatePhoneRequest.class), anyString());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("testTogglePhoneStatus_MissingVersion_ReturnsBadRequest")
+    void testTogglePhoneStatus_MissingVersion_ReturnsBadRequest() throws Exception {
+        Map<String, Object> requestWithoutVersion = new HashMap<>();
+        requestWithoutVersion.put("isDisabled", true);
+
+        mockMvc.perform(put("/api/admin/phones/phone123/toggle-disabled")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithoutVersion)))
+                .andExpect(status().isBadRequest());
+
+        verify(adminService, never()).setPhoneDisabledStatus(anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("testTogglePhoneStatus_ValidPhoneId_ReturnsToggledStatus")
     void testTogglePhoneStatus_ValidPhoneId_ReturnsToggledStatus() throws Exception {
+        Map<String, Object> request = new HashMap<>();
+        request.put("isDisabled", true);
+        request.put("version", 1);
+
         // Arrange
-        when(adminService.togglePhoneStatus(anyString(), anyString()))
+        when(adminService.setPhoneDisabledStatus(anyString(), any(), any(), anyString()))
                 .thenReturn(phoneManagementResponse);
 
         // Act & Assert
-        mockMvc.perform(put("/api/admin/phones/phone123/toggle-disabled"))
+        mockMvc.perform(put("/api/admin/phones/phone123/toggle-disabled")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Phone status toggled successfully"));
+                .andExpect(jsonPath("$.message").value("Phone status updated successfully"));
 
-        verify(adminService, times(1)).togglePhoneStatus(anyString(), anyString());
+        verify(adminService, times(1)).setPhoneDisabledStatus(anyString(), any(), any(), anyString());
     }
 
     @Test
