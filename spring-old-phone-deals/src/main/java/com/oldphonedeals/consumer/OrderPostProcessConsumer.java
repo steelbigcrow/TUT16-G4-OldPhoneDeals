@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,16 +69,14 @@ public class OrderPostProcessConsumer {
     @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag
   ) {
     try {
+      if (message == null || message.getMessageId() == null || message.getMessageId().isBlank()) {
+        throw new IllegalArgumentException("Order post-process message and messageId are required");
+      }
+
       if (processedMessageRepository.existsByMessageId(message.getMessageId())) {
         channel.basicAck(deliveryTag, false);
         return;
       }
-
-      processedMessageRepository.save(ProcessedMessage.builder()
-        .messageId(message.getMessageId())
-        .messageType("ORDER_POST_PROCESS")
-        .processedAt(LocalDateTime.now())
-        .build());
 
       Order order = orderRepository.findById(message.getOrderId())
         .orElseThrow(() -> new IllegalStateException("Order not found: " + message.getOrderId()));
@@ -92,23 +91,34 @@ public class OrderPostProcessConsumer {
       order.setPostProcessError(null);
       orderRepository.save(order);
 
+      processedMessageRepository.save(ProcessedMessage.builder()
+        .messageId(message.getMessageId())
+        .messageType("ORDER_POST_PROCESS")
+        .processedAt(LocalDateTime.now())
+        .build());
+
       channel.basicAck(deliveryTag, false);
       log.debug("Order post-process consumed: {}", message.getMessageId());
     } catch (Exception ex) {
-      log.error("Order post-process failed: {}", message.getMessageId(), ex);
+      String messageId = message != null ? message.getMessageId() : null;
+      log.error("Order post-process failed: {}", messageId, ex);
       if (isRetryExhausted()) {
-        triggerCompensation(message, ex.getMessage());
+        if (message != null && message.getOrderId() != null && !message.getOrderId().isBlank()) {
+          triggerCompensation(message, ex.getMessage());
+        }
         try {
           channel.basicNack(deliveryTag, false, false);
-          log.warn("Order post-process moved to DLQ after retries exhausted: {}", message.getMessageId());
+          log.warn("Order post-process moved to DLQ after retries exhausted: {}", messageId);
           return;
         } catch (Exception nackEx) {
           nackEx.addSuppressed(ex);
-          throw new IllegalStateException("Order post-process failed and could not nack: " + message.getMessageId(), nackEx);
+          throw new IllegalStateException("Order post-process failed and could not nack: " + messageId, nackEx);
         }
       }
-      markOrderFailed(message.getOrderId(), ex.getMessage());
-      throw new IllegalStateException("Order post-process failed: " + message.getMessageId(), ex);
+      if (message != null && message.getOrderId() != null && !message.getOrderId().isBlank()) {
+        markOrderFailed(message.getOrderId(), ex.getMessage());
+      }
+      throw new IllegalStateException("Order post-process failed: " + messageId, ex);
     }
   }
 
@@ -160,7 +170,7 @@ public class OrderPostProcessConsumer {
     var items = message.getItems() == null ? Collections.<OrderPostProcessMessage.Item>emptyList() : message.getItems();
 
     return OrderCompensationMessage.builder()
-      .sagaId(UUID.randomUUID().toString())
+      .sagaId(UUID.nameUUIDFromBytes((message.getMessageId() + "|" + message.getOrderId()).getBytes(StandardCharsets.UTF_8)).toString())
       .orderId(message.getOrderId())
       .userId(message.getUserId())
       .items(items.stream()

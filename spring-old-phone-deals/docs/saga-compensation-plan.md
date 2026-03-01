@@ -373,11 +373,59 @@ src/test/java/com/oldphonedeals/
 │   ├── SagaCompensationServiceImplTest.java    [新增]
 │   └── OrderServiceTest.java                   [扩展]
 ```
+
+### 7.2 E2E 测试
+
+E2E 测试与现有集成测试的核心区别：**集成测试通过 `@MockBean` 隔离数据层，仅验证 MQ 消费逻辑；E2E 测试使用真实 MongoDB + 真实 RabbitMQ（均通过 Testcontainers 启动），验证从 REST API 到数据库状态变更的完整链路，无任何 Mock。**
+
+#### 7.2.1 E2E 测试基类
+
+新增 `AbstractSagaE2E` 基类，同时启动 MongoDB 和 RabbitMQ 两个容器，加载完整 Spring 上下文（`@SpringBootTest(webEnvironment = RANDOM_PORT)`），提供：
+
+- `TestRestTemplate`：模拟前端发起 HTTP 请求
+- `MongoTemplate`：直接读写 MongoDB 验证数据状态
+- `RabbitTemplate`：检查队列消息数量与内容
+- 测试数据工厂方法：预置 Phone、User、Order 等基础数据到真实 MongoDB
+- `@BeforeEach` 清理：每个用例执行前清空 `orders`、`saga_logs`、`phones` 集合及 MQ 队列，确保用例隔离
+
+#### 7.2.2 E2E 测试用例
+
+| 测试类 | 场景 | 验证要点 |
+|--------|------|----------|
+| `SagaCompensationE2E` | 完整补偿链路 | 预置订单和库存数据到 MongoDB → 模拟后置处理失败触发补偿消息 → 等待异步补偿完成 → 从 MongoDB 验证：库存精确回滚（`stock` 加回、`salesCount` 减少）、订单 `postProcessStatus` = `COMPENSATED`、`checkoutStatus` = `FAILED`、`saga_logs` 集合存在对应记录且 `status` = `COMPLETED`、所有步骤均为 `SUCCESS`（`SEND_NOTIFICATION` 允许 `SKIPPED`） |
+| `SagaIdempotentE2E` | 幂等保障 | 用相同 `sagaId` 连续发布两条补偿消息 → 等待消费完成 → 从 MongoDB 验证：`saga_logs` 中仅一条记录、库存仅回滚一次（对比补偿前后的 `stock` 差值等于订单商品数量，而非两倍） |
+| `SagaMultiItemStockE2E` | 多商品库存精确回滚 | 预置含 3 种不同商品的订单（各商品购买数量不同） → 触发补偿 → 从 MongoDB 逐一验证每种商品的 `stock` 和 `salesCount` 均精确回滚到下单前的值 |
+| `SagaDlqFallbackE2E` | 补偿降级兜底 | 在 MongoDB 中制造导致补偿必然失败的数据状态（如删除订单文档使 `UPDATE_ORDER` 步骤无法执行） → 等待补偿重试耗尽 → 验证：补偿消息最终进入 `order.compensation.dlq.queue`、`saga_logs` 中记录 `status` = `FAILED` 且包含失败步骤的 `errorMessage` |
+| `SagaNormalFlowUnaffectedE2E` | 正常路径不受影响 | 在补偿机制已部署的环境下，执行一次正常的订单结账后置处理 → 验证：`postProcessStatus` = `SUCCESS`、库存正确扣减、`saga_logs` 集合无新增记录（证明正常路径不会误触发补偿） |
+
+#### 7.2.3 E2E 测试目录结构
+
+```
+src/test/java/com/oldphonedeals/
+└── e2e/
+    ├── AbstractSagaE2E.java                    [新增]
+    ├── SagaCompensationE2E.java                [新增]
+    ├── SagaIdempotentE2E.java                  [新增]
+    ├── SagaMultiItemStockE2E.java              [新增]
+    ├── SagaDlqFallbackE2E.java                 [新增]
+    └── SagaNormalFlowUnaffectedE2E.java         [新增]
+```
+
+#### 7.2.4 E2E 测试关键约束
+
+| 约束 | 说明 |
+|------|------|
+| 无 Mock | 全链路使用真实组件，不允许 `@MockBean`；若需模拟外部服务（如邮件），通过 `@TestConfiguration` 注入测试替身 |
+| 异步等待 | 使用 Awaitility 等待异步流程，超时上限 30 秒（补偿链路含重试，需要比集成测试更长的等待窗口） |
+| 数据隔离 | 每个用例独立预置和清理数据，禁止跨用例共享状态 |
+| 容器复用 | MongoDB 和 RabbitMQ 容器在同一测试类内复用（`static @Container`），跨测试类通过 `@DirtiesContext` 隔离 |
+| CI 兼容 | 标记 `@Tag("e2e")`，CI 流水线可通过 `-Dgroups=e2e` 单独执行或排除 |
+
 ---
 
 ## 8. 实施步骤
 
-分三个阶段实施，每个阶段独立可交付、可验证。
+分四个阶段实施，每个阶段独立可交付、可验证。
 
 ### 阶段一：基础设施 + 核心补偿逻辑
 
@@ -412,6 +460,19 @@ src/test/java/com/oldphonedeals/
 
 验收标准：所有单元测试通过；集成测试在 Testcontainers 环境下稳定通过。
 
+### 阶段三：E2E 测试
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 新增 `AbstractSagaE2E` 基类（同时启动 MongoDB + RabbitMQ 容器，提供数据预置与清理工具） |
+| 2 | 新增 `SagaCompensationE2E`（完整补偿链路验证） |
+| 3 | 新增 `SagaIdempotentE2E`（幂等保障验证） |
+| 4 | 新增 `SagaMultiItemStockE2E`（多商品库存精确回滚验证） |
+| 5 | 新增 `SagaDlqFallbackE2E`（补偿降级兜底验证） |
+| 6 | 新增 `SagaNormalFlowUnaffectedE2E`（正常路径不受影响验证） |
+
+验收标准：5 个 E2E 测试场景在 Testcontainers（MongoDB + RabbitMQ）环境下稳定通过；无任何 `@MockBean`；CI 可通过 `-Dgroups=e2e` 独立执行。
+
 ---
 
 ## 9. 分支策略
@@ -438,4 +499,5 @@ main
 4. **降级兜底**：补偿本身失败后消息进入补偿 DLQ，SagaLog 标记为 `FAILED`
 5. **单元测试**：所有新增和扩展的单元测试通过
 6. **集成测试**：5 个集成测试场景在 Testcontainers 环境下稳定通过
-7. **向后兼容**：现有订单流程（正常成功路径）不受影响
+7. **E2E 测试**：5 个 E2E 测试场景在 Testcontainers（MongoDB + RabbitMQ）环境下稳定通过，全链路无 Mock
+8. **向后兼容**：现有订单流程（正常成功路径）不受影响

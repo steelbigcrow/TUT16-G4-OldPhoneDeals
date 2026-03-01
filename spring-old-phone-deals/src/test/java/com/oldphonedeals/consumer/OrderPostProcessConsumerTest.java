@@ -18,9 +18,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.retry.support.RetryTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -111,6 +113,20 @@ class OrderPostProcessConsumerTest {
     }
 
     @Test
+    void shouldNotMarkMessageProcessedWhenOrderNotFound() throws Exception {
+        OrderPostProcessMessage message = buildMessage("msg-3b", "order-404");
+        when(processedMessageRepository.existsByMessageId("msg-3b")).thenReturn(false);
+        when(orderRepository.findById("order-404")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () ->
+            consumer.handleOrderPostProcessMessage(message, channel, 15L)
+        );
+
+        verify(processedMessageRepository, never()).save(any(ProcessedMessage.class));
+        verify(channel, never()).basicAck(anyLong(), anyBoolean());
+    }
+
+    @Test
     void shouldThrowAndMarkOrderFailedWhenSaveFails() {
         OrderPostProcessMessage message = buildMessage("msg-4", "order-4");
         Order order = Order.builder()
@@ -138,7 +154,13 @@ class OrderPostProcessConsumerTest {
     @Test
     void shouldThrowWhenProcessingFailsToTriggerRetry() {
         OrderPostProcessMessage message = buildMessage("msg-5", "order-5");
+        Order order = Order.builder()
+            .id("order-5")
+            .postProcessStatus(OrderPostProcessStatus.PENDING)
+            .build();
         when(processedMessageRepository.existsByMessageId("msg-5")).thenReturn(false);
+        when(orderRepository.findById("order-5")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new IllegalStateException("db error"))
             .when(processedMessageRepository)
             .save(any(ProcessedMessage.class));
@@ -232,6 +254,36 @@ class OrderPostProcessConsumerTest {
             saved != null && saved.getPostProcessStatus() == OrderPostProcessStatus.FAILED
         ));
         verify(channel).basicNack(14L, false, false);
+    }
+
+    @Test
+    void shouldUseDeterministicSagaIdWhenTriggeringCompensation() throws Exception {
+        OrderPostProcessMessage message = buildMessage("msg-9", "order-9");
+        Order order = Order.builder()
+            .id("order-9")
+            .postProcessStatus(OrderPostProcessStatus.PENDING)
+            .build();
+
+        when(processedMessageRepository.existsByMessageId("msg-9")).thenReturn(false);
+        doThrow(new IllegalStateException("db error"))
+            .when(processedMessageRepository)
+            .save(any(ProcessedMessage.class));
+        when(orderRepository.findById("order-9")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RetryTemplate retryTemplate = RetryTemplate.builder().maxAttempts(3).build();
+        retryTemplate.execute(context -> {
+            consumer.handleOrderPostProcessMessage(message, channel, 16L);
+            return null;
+        });
+
+        ArgumentCaptor<OrderCompensationMessage> captor = ArgumentCaptor.forClass(OrderCompensationMessage.class);
+        verify(compensationMessageProducer).publish(captor.capture());
+
+        String expectedSagaId = UUID.nameUUIDFromBytes(
+            (message.getMessageId() + "|" + message.getOrderId()).getBytes(StandardCharsets.UTF_8)
+        ).toString();
+        assertEquals(expectedSagaId, captor.getValue().getSagaId());
     }
 
     private OrderPostProcessMessage buildMessage(String messageId, String orderId) {
