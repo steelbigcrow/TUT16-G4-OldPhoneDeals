@@ -1,9 +1,11 @@
 package com.oldphonedeals.consumer;
 
 import com.oldphonedeals.dto.message.OrderPostProcessMessage;
+import com.oldphonedeals.dto.message.OrderCompensationMessage;
 import com.oldphonedeals.entity.Order;
 import com.oldphonedeals.entity.ProcessedMessage;
 import com.oldphonedeals.enums.OrderPostProcessStatus;
+import com.oldphonedeals.producer.CompensationMessageProducer;
 import com.oldphonedeals.producer.EmailMessageProducer;
 import com.oldphonedeals.repository.OrderRepository;
 import com.oldphonedeals.repository.ProcessedMessageRepository;
@@ -46,13 +48,21 @@ class OrderPostProcessConsumerTest {
     private EmailMessageProducer emailMessageProducer;
 
     @Mock
+    private CompensationMessageProducer compensationMessageProducer;
+
+    @Mock
     private Channel channel;
 
     private OrderPostProcessConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new OrderPostProcessConsumer(processedMessageRepository, orderRepository, emailMessageProducer);
+        consumer = new OrderPostProcessConsumer(
+            processedMessageRepository,
+            orderRepository,
+            emailMessageProducer,
+            compensationMessageProducer
+        );
     }
 
     @Test
@@ -141,10 +151,16 @@ class OrderPostProcessConsumerTest {
     @Test
     void shouldNackWithoutRequeueWhenRetryExhausted() throws Exception {
         OrderPostProcessMessage message = buildMessage("msg-6", "order-6");
+        Order order = Order.builder()
+            .id("order-6")
+            .postProcessStatus(OrderPostProcessStatus.PENDING)
+            .build();
         when(processedMessageRepository.existsByMessageId("msg-6")).thenReturn(false);
         doThrow(new IllegalStateException("db error"))
             .when(processedMessageRepository)
             .save(any(ProcessedMessage.class));
+        when(orderRepository.findById("order-6")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RetryTemplate retryTemplate = RetryTemplate.builder().maxAttempts(3).build();
 
@@ -154,8 +170,68 @@ class OrderPostProcessConsumerTest {
         });
 
         verify(processedMessageRepository, times(3)).save(any(ProcessedMessage.class));
+        verify(compensationMessageProducer).publish(any(OrderCompensationMessage.class));
         verify(channel).basicNack(12L, false, false);
         verify(channel, never()).basicAck(anyLong(), anyBoolean());
+    }
+
+    @Test
+    void shouldPublishCompensationAndMarkOrderCompensatingWhenRetryExhausted() throws Exception {
+        OrderPostProcessMessage message = buildMessage("msg-7", "order-7");
+        Order order = Order.builder()
+            .id("order-7")
+            .postProcessStatus(OrderPostProcessStatus.PENDING)
+            .build();
+
+        when(processedMessageRepository.existsByMessageId("msg-7")).thenReturn(false);
+        doThrow(new IllegalStateException("db error"))
+            .when(processedMessageRepository)
+            .save(any(ProcessedMessage.class));
+        when(orderRepository.findById("order-7")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RetryTemplate retryTemplate = RetryTemplate.builder().maxAttempts(3).build();
+        retryTemplate.execute(context -> {
+            consumer.handleOrderPostProcessMessage(message, channel, 13L);
+            return null;
+        });
+
+        verify(compensationMessageProducer).publish(any(OrderCompensationMessage.class));
+        verify(orderRepository, atLeastOnce()).save(argThat(saved ->
+            saved != null && saved.getPostProcessStatus() == OrderPostProcessStatus.COMPENSATING
+        ));
+        verify(channel).basicNack(13L, false, false);
+    }
+
+    @Test
+    void shouldNackAndFallbackToFailedWhenCompensationPublishFails() throws Exception {
+        OrderPostProcessMessage message = buildMessage("msg-8", "order-8");
+        Order order = Order.builder()
+            .id("order-8")
+            .postProcessStatus(OrderPostProcessStatus.PENDING)
+            .build();
+
+        when(processedMessageRepository.existsByMessageId("msg-8")).thenReturn(false);
+        doThrow(new IllegalStateException("db error"))
+            .when(processedMessageRepository)
+            .save(any(ProcessedMessage.class));
+        when(orderRepository.findById("order-8")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new IllegalStateException("compensation broker down"))
+            .when(compensationMessageProducer)
+            .publish(any(OrderCompensationMessage.class));
+
+        RetryTemplate retryTemplate = RetryTemplate.builder().maxAttempts(3).build();
+        retryTemplate.execute(context -> {
+            consumer.handleOrderPostProcessMessage(message, channel, 14L);
+            return null;
+        });
+
+        verify(compensationMessageProducer).publish(any(OrderCompensationMessage.class));
+        verify(orderRepository, atLeastOnce()).save(argThat(saved ->
+            saved != null && saved.getPostProcessStatus() == OrderPostProcessStatus.FAILED
+        ));
+        verify(channel).basicNack(14L, false, false);
     }
 
     private OrderPostProcessMessage buildMessage(String messageId, String orderId) {

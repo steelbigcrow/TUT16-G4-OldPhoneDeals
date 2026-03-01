@@ -35,6 +35,12 @@ public class RabbitMQConfig {
   public static final String ORDER_POST_PROCESS_DLQ_QUEUE = "order.post.process.dlq.queue";
   public static final String ORDER_POST_PROCESS_DLQ_ROUTING_KEY = "order.post.process.dlq";
 
+  public static final String COMPENSATION_EXCHANGE = "compensation.exchange";
+  public static final String ORDER_COMPENSATION_QUEUE = "order.compensation.queue";
+  public static final String ORDER_COMPENSATION_ROUTING_KEY = "order.compensation";
+  public static final String ORDER_COMPENSATION_DLQ_QUEUE = "order.compensation.dlq.queue";
+  public static final String ORDER_COMPENSATION_DLQ_ROUTING_KEY = "order.compensation.dlq";
+
   @Bean
   public TopicExchange notificationExchange() {
     return new TopicExchange(NOTIFICATION_EXCHANGE);
@@ -43,6 +49,11 @@ public class RabbitMQConfig {
   @Bean
   public TopicExchange orderExchange() {
     return new TopicExchange(ORDER_EXCHANGE);
+  }
+
+  @Bean
+  public TopicExchange compensationExchange() {
+    return new TopicExchange(COMPENSATION_EXCHANGE);
   }
 
   @Bean
@@ -76,6 +87,21 @@ public class RabbitMQConfig {
   }
 
   @Bean
+  public Queue orderCompensationQueue() {
+    Map<String, Object> args = new HashMap<>();
+    args.put("x-dead-letter-exchange", COMPENSATION_EXCHANGE);
+    args.put("x-dead-letter-routing-key", ORDER_COMPENSATION_DLQ_ROUTING_KEY);
+    return new Queue(ORDER_COMPENSATION_QUEUE, true, false, false, args);
+  }
+
+  @Bean
+  public Queue orderCompensationDlqQueue() {
+    Map<String, Object> args = new HashMap<>();
+    args.put("x-message-ttl", 604800000);
+    return new Queue(ORDER_COMPENSATION_DLQ_QUEUE, true, false, false, args);
+  }
+
+  @Bean
   public Binding emailSendBinding() {
     return BindingBuilder.bind(emailSendQueue()).to(notificationExchange()).with(EMAIL_SEND_ROUTING_KEY);
   }
@@ -93,6 +119,16 @@ public class RabbitMQConfig {
   @Bean
   public Binding orderPostProcessDlqBinding() {
     return BindingBuilder.bind(orderPostProcessDlqQueue()).to(orderExchange()).with(ORDER_POST_PROCESS_DLQ_ROUTING_KEY);
+  }
+
+  @Bean
+  public Binding orderCompensationBinding() {
+    return BindingBuilder.bind(orderCompensationQueue()).to(compensationExchange()).with(ORDER_COMPENSATION_ROUTING_KEY);
+  }
+
+  @Bean
+  public Binding orderCompensationDlqBinding() {
+    return BindingBuilder.bind(orderCompensationDlqQueue()).to(compensationExchange()).with(ORDER_COMPENSATION_DLQ_ROUTING_KEY);
   }
 
   @Bean
@@ -145,6 +181,26 @@ public class RabbitMQConfig {
       RetryInterceptorBuilder.stateless()
         .maxAttempts(3)
         .backOffOptions(2000, 3.0, 18000)
+        .recoverer(new RejectAndDontRequeueRecoverer())
+        .build()
+    );
+    return factory;
+  }
+
+  @Bean(name = "compensationListenerContainerFactory")
+  public SimpleRabbitListenerContainerFactory compensationListenerContainerFactory(
+    ConnectionFactory connectionFactory,
+    MessageConverter messageConverter
+  ) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setConnectionFactory(connectionFactory);
+    factory.setMessageConverter(messageConverter);
+    factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+    factory.setDefaultRequeueRejected(false);
+    factory.setAdviceChain(
+      RetryInterceptorBuilder.stateless()
+        .maxAttempts(4)
+        .backOffOptions(3000, 3.0, 27000)
         .recoverer(new RejectAndDontRequeueRecoverer())
         .build()
     );

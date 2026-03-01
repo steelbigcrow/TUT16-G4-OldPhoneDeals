@@ -37,4 +37,23 @@ public class PhoneStockRepositoryImpl implements PhoneStockRepository {
     UpdateResult result = mongoTemplate.updateFirst(query, update, Phone.class);
     return result.getModifiedCount() > 0;
   }
+
+  @Override
+  public boolean increaseStockAndDecreaseSales(String phoneId, int quantity) {
+    Query query = Query.query(
+      new Criteria().andOperator(
+        Criteria.where("_id").is(phoneId),
+        Criteria.where("salesCount").gte(quantity)
+      )
+    );
+
+    Update update = new Update()
+      .inc("stock", quantity)
+      .inc("salesCount", -quantity)
+      .inc("version", 1)
+      .set("updatedAt", LocalDateTime.now());
+
+    UpdateResult result = mongoTemplate.updateFirst(query, update, Phone.class);
+    return result.getModifiedCount() > 0;
+  }
 }

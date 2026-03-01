@@ -6,5 +6,7 @@ package com.oldphonedeals.enums;
 public enum OrderPostProcessStatus {
   PENDING,
   SUCCESS,
-  FAILED
+  FAILED,
+  COMPENSATING,
+  COMPENSATED
 }

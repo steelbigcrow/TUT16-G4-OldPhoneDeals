@@ -9,6 +9,7 @@ import com.oldphonedeals.entity.Order;
 import com.oldphonedeals.entity.Phone;
 import com.oldphonedeals.entity.User;
 import com.oldphonedeals.enums.OrderCheckoutStatus;
+import com.oldphonedeals.enums.OrderPostProcessStatus;
 import com.oldphonedeals.enums.PhoneBrand;
 import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.exception.DuplicateResourceException;
@@ -424,8 +425,20 @@ class OrderServiceTest {
             .createdAt(LocalDateTime.now().plusMinutes(1))
             .build();
 
+        Order compensatedOrder = Order.builder()
+            .id("order-compensated")
+            .userId("user-id")
+            .idempotencyKey("compensated-key")
+            .checkoutStatus(OrderCheckoutStatus.FAILED)
+            .postProcessStatus(OrderPostProcessStatus.COMPENSATED)
+            .checkoutError("Order compensated: post-process failed")
+            .items(List.of())
+            .totalAmount(0.0)
+            .createdAt(LocalDateTime.now().plusMinutes(2))
+            .build();
+
         when(orderRepository.findByUserId("user-id"))
-            .thenReturn(List.of(failedOrder, processingOrder, legacyOrder, completedOrder));
+            .thenReturn(List.of(compensatedOrder, failedOrder, processingOrder, legacyOrder, completedOrder));
 
         List<OrderResponse> orders = orderService.getUserOrders("user-id");
 
@@ -464,8 +477,20 @@ class OrderServiceTest {
             .createdAt(LocalDateTime.now().plusMinutes(1))
             .build();
 
+        Order compensatedOrder = Order.builder()
+            .id("order-compensated")
+            .userId("user-id")
+            .idempotencyKey("compensated-key")
+            .checkoutStatus(OrderCheckoutStatus.FAILED)
+            .postProcessStatus(OrderPostProcessStatus.COMPENSATED)
+            .checkoutError("Order compensated: post-process failed")
+            .items(List.of())
+            .totalAmount(0.0)
+            .createdAt(LocalDateTime.now().plusMinutes(2))
+            .build();
+
         when(orderRepository.findByUserId("user-id"))
-            .thenReturn(List.of(failedOrder, processingOrder, legacyOrder, completedOrder));
+            .thenReturn(List.of(compensatedOrder, failedOrder, processingOrder, legacyOrder, completedOrder));
 
         OrderPageResponse response = orderService.getUserOrders("user-id", 1, 10);
 
