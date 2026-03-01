@@ -373,95 +373,6 @@ src/test/java/com/oldphonedeals/
 │   ├── SagaCompensationServiceImplTest.java    [新增]
 │   └── OrderServiceTest.java                   [扩展]
 ```
-
-### 7.2 集成测试
-
-集成测试使用 `@SpringBootTest` + Testcontainers（RabbitMQ + MongoDB）验证真实环境下的补偿流程。
-
-#### 7.2.1 集成测试用例矩阵
-
-| 优先级 | 测试类 | 验证目标 | 通过标准 |
-|--------|--------|----------|----------|
-| P0 | `SagaCompensationFlowIT` | 订单后置处理失败后，补偿消息被消费，库存回滚，订单状态变为 `COMPENSATED` | 库存恢复到下单前数值；订单 `postProcessStatus = COMPENSATED`；SagaLog `status = COMPLETED` |
-| P0 | `SagaCompensationIdempotentIT` | 重复发送相同 `sagaId` 的补偿消息 | SagaLog 仅一条记录；库存不被重复加回 |
-| P0 | `SagaCompensationDlqIT` | 补偿编排器持续失败，重试耗尽 | 补偿消息进入 `order.compensation.dlq.queue`；SagaLog `status = FAILED` |
-| P1 | `SagaStockRestoreIT` | 多商品订单的库存逐一回滚 | 每件商品的 stock 和 salesCount 均正确恢复 |
-| P1 | `SagaNotificationSkipIT` | 邮件发送失败时补偿仍然完成 | SagaLog 中 `SEND_NOTIFICATION` 步骤为 `SKIPPED`；整体 `status = COMPLETED` |
-
-#### 7.2.2 集成测试目录结构
-
-```
-src/test/java/com/oldphonedeals/integration/
-└── saga/
-    ├── AbstractSagaIT.java                  # 基类：启动 RabbitMQ + MongoDB 容器
-    ├── SagaCompensationFlowIT.java          # 补偿主链路
-    ├── SagaCompensationIdempotentIT.java    # 补偿幂等
-    ├── SagaCompensationDlqIT.java           # 补偿 DLQ
-    ├── SagaStockRestoreIT.java              # 多商品库存回滚
-    └── SagaNotificationSkipIT.java          # 通知跳过
-```
-
-#### 7.2.3 集成测试技术要点
-
-- 复用现有 `AbstractRabbitMqIT` 基类模式，扩展为同时启动 RabbitMQ + MongoDB 容器
-- 使用 `@DynamicPropertySource` 注入容器地址
-- 使用 `Awaitility` 等待异步补偿完成，避免 `Thread.sleep`
-- 测试 profile 下使用较短重试退避（100ms 起步），缩短测试执行时间
-
-### 7.3 E2E 测试（Playwright）
-
-E2E 测试通过 Playwright 从用户视角验证补偿流程的端到端行为，复用现有 `react-frontend/e2e/` 目录和测试模式。
-
-#### 7.3.1 前置条件
-
-- 后端需提供 E2E 测试专用端点（扩展现有 `/api/e2e/reset`），支持：
-  - 重置测试数据（用户、商品、订单）
-  - 模拟订单后置处理失败（如通过配置开关强制消费者抛异常）
-  - 查询 SagaLog 状态（供断言使用）
-- 前端需在订单详情页展示补偿状态（如 `COMPENSATED`）
-
-#### 7.3.2 E2E 测试用例
-
-| 测试用例 | 验证目标 | 关键断言 |
-|----------|----------|----------|
-| 订单补偿后库存恢复 | 下单后模拟后置处理失败，验证商品库存自动恢复 | 商品详情页库存数量回到下单前；订单不在用户订单列表中展示 |
-| 补偿后用户收到通知 | 补偿完成后用户收到订单取消通知 | 通过 API 断言补偿通知邮件已发布到 MQ |
-| 补偿状态可查询 | 管理员可通过 API 查询 SagaLog | SagaLog 返回正确的 `sagaId`、`status`、`steps` |
-
-#### 7.3.3 E2E 测试文件
-
-```
-react-frontend/e2e/
-└── saga-compensation.spec.ts    [新增]
-```
-
-#### 7.3.4 E2E 测试流程示例
-
-以"订单补偿后库存恢复"为例，测试流程如下：
-
-```
-1. 调用 /api/e2e/reset 重置测试数据
-2. 登录买家账号，获取 token
-3. 通过 API 记录商品初始库存
-4. 调用 /api/e2e/saga/enable-failure 开启后置处理强制失败模式
-5. 添加商品到购物车
-6. 执行结账（checkout）
-7. 等待补偿流程完成（轮询 /api/e2e/saga/status/{orderId}）
-8. 断言：商品库存恢复到初始值
-9. 断言：订单不在用户订单列表中
-10. 调用 /api/e2e/saga/disable-failure 关闭强制失败模式
-```
-
-#### 7.3.5 E2E 测试辅助端点（后端新增）
-
-为支持 E2E 测试，需在后端新增以下测试专用端点（仅在 `e2e` profile 下启用）：
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/e2e/saga/enable-failure` | POST | 开启订单后置处理强制失败模式 |
-| `/api/e2e/saga/disable-failure` | POST | 关闭强制失败模式 |
-| `/api/e2e/saga/status/{orderId}` | GET | 查询指定订单的 SagaLog 状态 |
-
 ---
 
 ## 8. 实施步骤
@@ -501,18 +412,6 @@ react-frontend/e2e/
 
 验收标准：所有单元测试通过；集成测试在 Testcontainers 环境下稳定通过。
 
-### 阶段三：E2E 测试 + 辅助端点
-
-| 步骤 | 内容 |
-|------|------|
-| 1 | 新增 E2E 测试辅助 Controller（`E2eSagaController`），提供强制失败开关和 SagaLog 查询端点 |
-| 2 | 改造 `OrderPostProcessConsumer`，支持通过配置开关强制抛异常（仅 `e2e` profile） |
-| 3 | 新增 Playwright E2E 测试文件 `saga-compensation.spec.ts` |
-| 4 | 编写"订单补偿后库存恢复"E2E 用例 |
-| 5 | 编写"补偿状态可查询"E2E 用例 |
-
-验收标准：Playwright E2E 测试在完整环境（前端 + 后端 + RabbitMQ + MongoDB）下稳定通过。
-
 ---
 
 ## 9. 分支策略
@@ -539,5 +438,4 @@ main
 4. **降级兜底**：补偿本身失败后消息进入补偿 DLQ，SagaLog 标记为 `FAILED`
 5. **单元测试**：所有新增和扩展的单元测试通过
 6. **集成测试**：5 个集成测试场景在 Testcontainers 环境下稳定通过
-7. **E2E 测试**：Playwright 测试在完整环境下稳定通过
-8. **向后兼容**：现有订单流程（正常成功路径）不受影响
+7. **向后兼容**：现有订单流程（正常成功路径）不受影响
