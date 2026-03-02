@@ -92,3 +92,6 @@ server/pnpm-lock.yaml
 # Agent相关
 .claude
 AGENTS.md
+
+# 工具
+.desloppify
