@@ -2,10 +2,12 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.dto.request.admin.AdminLoginRequest;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.dto.request.admin.UpdatePhoneRequest;
 import com.oldphonedeals.dto.request.admin.UpdateUserRequest;
@@ -72,8 +74,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false) // 禁用Security过滤器以简化测试
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("AdminController集成测试")
 class AdminControllerTest {
 
@@ -214,6 +216,27 @@ class AdminControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(adminService, times(1)).adminLogin(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("testAdminProtectedEndpoint_Anonymous_ReturnsUnauthorized")
+    void testAdminProtectedEndpoint_Anonymous_ReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/admin/stats"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(adminService, never()).getDashboardStats();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("testAdminProtectedEndpoint_UserRole_ReturnsForbidden")
+    void testAdminProtectedEndpoint_UserRole_ReturnsForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/stats"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(adminService, never()).getDashboardStats();
     }
 
     // ==================== Dashboard 统计测试 ====================

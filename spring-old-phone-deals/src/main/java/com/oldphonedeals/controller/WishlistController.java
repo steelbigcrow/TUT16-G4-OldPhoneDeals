@@ -9,7 +9,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -47,7 +46,6 @@ public class WishlistController {
      * @return 更新后的收藏夹
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<WishlistResponse>> addToWishlist(
         @Valid @RequestBody AddToWishlistRequest request
     ) {
@@ -73,7 +71,6 @@ public class WishlistController {
      * @return 更新后的收藏夹
      */
     @DeleteMapping("/{phoneId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<WishlistResponse>> removeFromWishlist(
         @PathVariable String phoneId
     ) {
@@ -98,7 +95,6 @@ public class WishlistController {
      * @return 用户的收藏夹
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<WishlistResponse>> getUserWishlist() {
         // 从安全上下文获取当前用户ID
         String userId = SecurityContextHelper.getCurrentUserId();

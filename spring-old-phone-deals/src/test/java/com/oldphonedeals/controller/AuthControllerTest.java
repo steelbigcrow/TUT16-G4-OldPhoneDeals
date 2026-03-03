@@ -2,6 +2,7 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.dto.request.auth.*;
 import com.oldphonedeals.dto.response.auth.AuthUserResponse;
 import com.oldphonedeals.dto.response.auth.LoginResponse;
@@ -11,6 +12,7 @@ import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,7 @@ import org.springframework.context.annotation.Import;
 import com.oldphonedeals.config.CorsConfig;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -59,8 +62,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false) // 禁用Security过滤器以简化测试
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("AuthController集成测试")
 class AuthControllerTest {
 
@@ -502,6 +505,7 @@ class AuthControllerTest {
     // ==================== 获取当前用户端点测试 ====================
 
     @Test
+    @WithMockUser(username = "user123", roles = "USER")
     @DisplayName("testGetCurrentUser_Authenticated_ReturnsUserInfo")
     void testGetCurrentUser_Authenticated_ReturnsUserInfo() throws Exception {
         // Arrange
@@ -516,5 +520,15 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.isVerified").value(true));
 
         verify(authService, times(1)).getCurrentUser();
+    }
+
+    @Test
+    @DisplayName("testGetCurrentUser_Anonymous_ReturnsUnauthorized")
+    void testGetCurrentUser_Anonymous_ReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(authService, never()).getCurrentUser();
     }
 }

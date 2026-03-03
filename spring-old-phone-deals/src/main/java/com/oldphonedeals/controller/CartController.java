@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -49,7 +48,6 @@ public class CartController {
      * @return 购物车响应对象，包含商品列表及增强信息（评分、卖家等）
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CartResponse>> getCart() {
         String userId = SecurityContextHelper.getCurrentUserId();
         log.info("GET /api/cart - Getting cart for user: {}", userId);
@@ -80,7 +78,6 @@ public class CartController {
      * @return 更新后的购物车响应对象
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CartResponse>> addToCart(
             @Valid @RequestBody AddToCartRequest request
     ) {
@@ -114,7 +111,6 @@ public class CartController {
      * @return 更新后的购物车响应对象
      */
     @PutMapping("/{phoneId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
             @PathVariable String phoneId,
             @Valid @RequestBody UpdateCartItemRequest request
@@ -146,7 +142,6 @@ public class CartController {
      * @return 更新后的购物车响应对象
      */
     @DeleteMapping("/{phoneId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CartResponse>> removeFromCart(
             @PathVariable String phoneId
     ) {

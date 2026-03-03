@@ -2,6 +2,7 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.dto.request.admin.ToggleReviewVisibilityRequest;
@@ -12,6 +13,7 @@ import com.oldphonedeals.entity.Phone;
 import com.oldphonedeals.entity.User;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.ReviewService;
 import com.oldphonedeals.repository.PhoneRepository;
@@ -60,8 +62,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false)
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("ReviewController 集成测试")
 class ReviewControllerTest {
 
@@ -353,5 +355,15 @@ class ReviewControllerTest {
                 .andExpect(jsonPath("$.data[0].phoneId").value("phone-1"));
 
         verify(reviewService, times(1)).getReviewsBySeller("seller-1");
+    }
+
+    @Test
+    @DisplayName("应该返回401错误 - 当匿名用户访问卖家评论接口时")
+    void shouldReturnUnauthorized_whenAnonymousUserGetsReviewsBySeller() throws Exception {
+        mockMvc.perform(get("/api/phones/reviews/by-seller"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(reviewService, never()).getReviewsBySeller(anyString());
     }
 }

@@ -10,7 +10,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -26,7 +25,6 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -48,30 +46,45 @@ public class SecurityConfig {
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         )
         .authorizeHttpRequests(auth -> {
-          // Public endpoints
+          // Common public resources
           auth.requestMatchers(
-              "/api/auth/**",
               "/api/public/**",
               "/error",
               "/static/**",
               "/images/**"
           ).permitAll();
 
+          // Public auth endpoints
+          auth.requestMatchers(
+              HttpMethod.POST,
+              "/api/auth/login",
+              "/api/auth/register",
+              "/api/auth/verify-email",
+              "/api/auth/request-password-reset",
+              "/api/auth/verify-reset-code",
+              "/api/auth/reset-password",
+              "/api/auth/resend-verification"
+          ).permitAll();
+
+          // Authenticated auth endpoints
+          auth.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated();
+
           // Admin login must be public (otherwise can't get JWT)
           auth.requestMatchers(HttpMethod.POST, "/api/admin/login").permitAll();
+          auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
 
-          // Public browsing
-          auth.requestMatchers(HttpMethod.GET, "/api/phones/**").permitAll();
+          // Explicit protected phone endpoints that are GET and would otherwise match public phone browsing
+          auth.requestMatchers(HttpMethod.GET, "/api/phones/reviews/by-seller").authenticated();
 
           // Uploaded images are static resources; permit GET so guests can see product images.
           auth.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
 
+          // Public browsing
+          auth.requestMatchers(HttpMethod.GET, "/api/phones/**").permitAll();
+
           if (e2eEnabled) {
             auth.requestMatchers("/api/e2e/**").permitAll();
           }
-
-          // Admin endpoints
-          auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
 
           // Everything else requires authentication
           auth.anyRequest().authenticated();
@@ -134,4 +147,3 @@ public class SecurityConfig {
     return config.getAuthenticationManager();
   }
 }
-

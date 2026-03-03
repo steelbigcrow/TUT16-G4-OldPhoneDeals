@@ -2,10 +2,12 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.service.FileStorageService;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +21,14 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -42,8 +47,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false)
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("FileUploadController 测试")
 class FileUploadControllerTest {
 
@@ -63,6 +68,7 @@ class FileUploadControllerTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
+    @WithMockUser(username = "user123", roles = "USER")
     @DisplayName("uploadImage_ValidFile_ReturnsSuccessResponse")
     void uploadImage_ValidFile_ReturnsSuccessResponse() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
@@ -85,5 +91,24 @@ class FileUploadControllerTest {
             .andExpect(jsonPath("$.data.fileUrl").value("/uploads/images/generated-name.jpg"))
             .andExpect(jsonPath("$.data.originalName").value("test-image.jpg"))
             .andExpect(jsonPath("$.data.contentType").value("image/jpeg"));
+    }
+
+    @Test
+    @DisplayName("uploadImage_AnonymousUser_ReturnsUnauthorized")
+    void uploadImage_AnonymousUser_ReturnsUnauthorized() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "test-image.jpg",
+            "image/jpeg",
+            "test-content".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/upload/image")
+                .file(file)
+                .contentType(MediaType.MULTIPART_FORM_DATA))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.success").value(false));
+
+        verify(fileStorageService, never()).storeFile(any(), eq("images"));
     }
 }

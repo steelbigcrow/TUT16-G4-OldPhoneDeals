@@ -18,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -55,7 +54,6 @@ public class AdminController {
      * GET /api/admin/profile
      */
     @GetMapping("/profile")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AdminProfileResponse>> getAdminProfile() {
         String adminId = SecurityContextHelper.getCurrentUserId();
         AdminProfileResponse response = adminService.getAdminProfile(adminId);
@@ -67,7 +65,6 @@ public class AdminController {
      * PUT /api/admin/profile
      */
     @PutMapping("/profile")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AdminProfileResponse>> updateAdminProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
         String adminId = SecurityContextHelper.getCurrentUserId();
@@ -80,7 +77,6 @@ public class AdminController {
      * GET /api/admin/stats
      */
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AdminStatsResponse>> getDashboardStats() {
         AdminStatsResponse response = adminService.getDashboardStats();
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -95,7 +91,6 @@ public class AdminController {
      * GET /api/admin/users?page=1&pageSize=10&search=john&isDisabled=false
      */
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<UserManagementResponse>>> getAllUsers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -118,7 +113,6 @@ public class AdminController {
      * GET /api/admin/users/{userId}
      */
     @GetMapping("/users/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetail(@PathVariable String userId) {
         String adminId = SecurityContextHelper.getCurrentUserId();
         UserDetailResponse response = adminService.getUserDetail(userId, adminId);
@@ -130,7 +124,6 @@ public class AdminController {
      * PUT /api/admin/users/{userId}
      */
     @PutMapping("/users/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserManagementResponse>> updateUser(
             @PathVariable String userId,
             @Valid @RequestBody UpdateUserRequest request) {
@@ -144,7 +137,6 @@ public class AdminController {
      * PUT /api/admin/users/{userId}/toggle-disabled
      */
     @PutMapping("/users/{userId}/toggle-disabled")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserManagementResponse>> toggleUserStatus(@PathVariable String userId) {
         String adminId = SecurityContextHelper.getCurrentUserId();
         UserManagementResponse response = adminService.toggleUserStatus(userId, adminId);
@@ -156,7 +148,6 @@ public class AdminController {
      * DELETE /api/admin/users/{userId}
      */
     @DeleteMapping("/users/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String userId) {
         String adminId = SecurityContextHelper.getCurrentUserId();
         adminService.deleteUser(userId, adminId);
@@ -168,7 +159,6 @@ public class AdminController {
      * GET /api/admin/users/{userId}/phones?page=1&limit=10&sortBy=createdAt&sortOrder=desc&brand=Apple
      */
     @GetMapping("/users/{userId}/phones")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AdminUserPhoneResponse>>> getUserPhones(
             @PathVariable String userId,
             @RequestParam(value = "page", defaultValue = "1") int page,
@@ -189,7 +179,6 @@ public class AdminController {
      * GET /api/admin/users/{userId}/reviews?page=1&limit=10&sortBy=createdAt&sortOrder=desc&brand=Samsung
      */
     @GetMapping("/users/{userId}/reviews")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AdminUserReviewResponse>>> getUserReviews(
             @PathVariable String userId,
             @RequestParam(value = "page", defaultValue = "1") int page,
@@ -214,7 +203,6 @@ public class AdminController {
      * GET /api/admin/phones?page=1&pageSize=10
      */
     @GetMapping("/phones")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<PhoneManagementResponse>>> getAllPhones(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
@@ -231,7 +219,6 @@ public class AdminController {
      * PUT /api/admin/phones/{phoneId}
      */
     @PutMapping("/phones/{phoneId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PhoneManagementResponse>> updatePhone(
             @PathVariable String phoneId,
             @Valid @RequestBody UpdatePhoneRequest request) {
@@ -245,7 +232,6 @@ public class AdminController {
      * PUT /api/admin/phones/{phoneId}/toggle-disabled
      */
     @PutMapping("/phones/{phoneId}/toggle-disabled")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PhoneManagementResponse>> togglePhoneStatus(
             @PathVariable String phoneId,
             @Valid @RequestBody TogglePhoneStatusRequest request) {
@@ -263,7 +249,6 @@ public class AdminController {
      * DELETE /api/admin/phones/{phoneId}
      */
     @DeleteMapping("/phones/{phoneId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deletePhone(@PathVariable String phoneId) {
         String adminId = SecurityContextHelper.getCurrentUserId();
         adminService.deletePhone(phoneId, adminId);
@@ -279,7 +264,6 @@ public class AdminController {
      * GET /api/admin/reviews?page=1&pageSize=10&visibility=false&reviewerId=xxx&phoneId=yyy&search=keyword
      */
     @GetMapping("/reviews")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ReviewManagementResponse>>> getAllReviews(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -303,7 +287,6 @@ public class AdminController {
      * GET /api/admin/reviews/phones/{phoneId}
      */
     @GetMapping({"/reviews/phones/{phoneId}", "/phones/{phoneId}/reviews"})
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PhoneReviewListResponse> getPhoneReviews(
             @PathVariable String phoneId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
@@ -325,7 +308,6 @@ public class AdminController {
      * PUT /api/admin/reviews/{phoneId}/{reviewId}/toggle-visibility
      */
     @PutMapping("/reviews/{phoneId}/{reviewId}/toggle-visibility")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ReviewManagementResponse>> toggleReviewVisibility(
             @PathVariable String phoneId,
             @PathVariable String reviewId) {
@@ -339,7 +321,6 @@ public class AdminController {
      * DELETE /api/admin/reviews/{phoneId}/{reviewId}
      */
     @DeleteMapping("/reviews/{phoneId}/{reviewId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReview(
             @PathVariable String phoneId,
             @PathVariable String reviewId) {
@@ -357,7 +338,6 @@ public class AdminController {
      * GET /api/admin/orders?page=1&pageSize=10&userId=xxx&startDate=2024-01-01T00:00:00&endDate=2024-12-31T23:59:59
      */
     @GetMapping("/orders")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<OrderManagementResponse>>> getAllOrders(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -386,7 +366,6 @@ public class AdminController {
      * GET /api/admin/orders/export?format=csv|json
      */
     @GetMapping("/orders/export")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> exportOrders(
             @RequestParam(defaultValue = "csv") String format,
             @RequestParam(required = false) String userId,
@@ -412,7 +391,6 @@ public class AdminController {
      * GET /api/admin/orders/{orderId}
      */
     @GetMapping("/orders/{orderId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderDetail(@PathVariable String orderId) {
         OrderDetailResponse response = adminService.getOrderDetail(orderId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -423,7 +401,6 @@ public class AdminController {
      * GET /api/admin/orders/stats
      */
     @GetMapping("/orders/stats")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SalesStatsResponse>> getSalesStats() {
         SalesStatsResponse response = adminService.getSalesStats();
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -438,7 +415,6 @@ public class AdminController {
      * GET /api/admin/logs?page=1&pageSize=10
      */
     @GetMapping("/logs")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AdminLogResponse>>> getAllLogs(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {

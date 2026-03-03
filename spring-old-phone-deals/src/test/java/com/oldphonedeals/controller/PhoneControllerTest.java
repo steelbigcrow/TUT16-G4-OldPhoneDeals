@@ -2,6 +2,7 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.dto.request.phone.PhoneCreateRequest;
@@ -14,6 +15,7 @@ import com.oldphonedeals.exception.ForbiddenException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.exception.UnauthorizedException;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.PhoneService;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,8 +67,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false) // 禁用Security过滤器以简化测试
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("PhoneController集成测试")
 class PhoneControllerTest {
 
@@ -171,6 +173,7 @@ class PhoneControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("testCreatePhone_MissingTitle_ReturnsBadRequest")
     void testCreatePhone_MissingTitle_ReturnsBadRequest() throws Exception {
         // Arrange
@@ -193,6 +196,7 @@ class PhoneControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("testCreatePhone_NegativePrice_ReturnsBadRequest")
     void testCreatePhone_NegativePrice_ReturnsBadRequest() throws Exception {
         // Arrange
@@ -215,6 +219,7 @@ class PhoneControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("testCreatePhone_NegativeStock_ReturnsBadRequest")
     void testCreatePhone_NegativeStock_ReturnsBadRequest() throws Exception {
         // Arrange
@@ -237,6 +242,7 @@ class PhoneControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("testCreatePhone_MissingBrand_ReturnsBadRequest")
     void testCreatePhone_MissingBrand_ReturnsBadRequest() throws Exception {
         // Arrange

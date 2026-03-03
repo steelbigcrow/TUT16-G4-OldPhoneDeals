@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -52,7 +51,6 @@ public class PhoneController {
    * @return 新创建的商品信息
    */
   @PostMapping
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<PhoneResponse>> createPhone(
       @Valid @RequestBody PhoneCreateRequest request
   ) {
@@ -82,7 +80,6 @@ public class PhoneController {
    * @return 更新后的商品信息
    */
   @PutMapping("/{phoneId}")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<PhoneResponse>> updatePhone(
       @PathVariable String phoneId,
       @Valid @RequestBody PhoneUpdateRequest request
@@ -112,7 +109,6 @@ public class PhoneController {
    * @return 删除成功消息
    */
   @DeleteMapping("/{phoneId}")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<String>> deletePhone(
       @PathVariable String phoneId
   ) {
@@ -140,7 +136,6 @@ public class PhoneController {
    * @return ??????
    */
   @PutMapping("/{phoneId}/disable")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<String>> togglePhoneDisabled(
       @PathVariable String phoneId,
       @Valid @RequestBody TogglePhoneStatusRequest request

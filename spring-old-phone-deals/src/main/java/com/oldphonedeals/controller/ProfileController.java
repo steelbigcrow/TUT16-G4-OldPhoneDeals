@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -53,7 +52,6 @@ public class ProfileController {
      * @return current user profile wrapped in ApiResponse
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUserProfile() {
         String userId = SecurityContextHelper.getCurrentUserId();
         log.info("Get current user profile request for user ID: {}", userId);
@@ -72,7 +70,6 @@ public class ProfileController {
      * @return user profile
      */
     @GetMapping("/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(
         @PathVariable String userId
     ) {
@@ -93,7 +90,6 @@ public class ProfileController {
      * @return updated profile
      */
     @PutMapping("/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateUserProfile(
         @PathVariable String userId,
         @Valid @RequestBody UpdateProfileRequest request
@@ -114,7 +110,6 @@ public class ProfileController {
      * @return updated profile
      */
     @PutMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateCurrentUserProfile(
         @Valid @RequestBody UpdateProfileRequest request
     ) {
@@ -136,7 +131,6 @@ public class ProfileController {
      * @return empty success response
      */
     @PutMapping("/{userId}/change-password")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> changePassword(
         @PathVariable String userId,
         @Valid @RequestBody ChangePasswordRequest request
@@ -157,7 +151,6 @@ public class ProfileController {
      * @return empty success response
      */
     @PutMapping("/change-password")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> changeCurrentUserPassword(
         @Valid @RequestBody ChangePasswordRequest request
     ) {

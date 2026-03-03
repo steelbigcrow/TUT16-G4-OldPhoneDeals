@@ -2,6 +2,7 @@ package com.oldphonedeals.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oldphonedeals.config.ControllerTestConfig;
+import com.oldphonedeals.security.SecurityConfig;
 import com.oldphonedeals.config.CorsConfig;
 import com.oldphonedeals.config.FileStorageProperties;
 import com.oldphonedeals.dto.request.order.CheckoutRequest;
@@ -11,6 +12,7 @@ import com.oldphonedeals.exception.BadRequestException;
 import com.oldphonedeals.exception.ForbiddenException;
 import com.oldphonedeals.exception.ResourceNotFoundException;
 import com.oldphonedeals.security.CustomUserDetailsService;
+import com.oldphonedeals.security.JwtAuthenticationFilter;
 import com.oldphonedeals.security.JwtTokenProvider;
 import com.oldphonedeals.service.OrderService;
 import com.oldphonedeals.service.result.CheckoutResult;
@@ -62,8 +64,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         type = FilterType.ASSIGNABLE_TYPE,
         classes = CorsConfig.class
     ))
-@Import(ControllerTestConfig.class)
-@AutoConfigureMockMvc(addFilters = false) // 禁用Security过滤器以简化测试
+@Import({ControllerTestConfig.class, SecurityConfig.class, JwtAuthenticationFilter.class})
+@AutoConfigureMockMvc
 @DisplayName("OrderController集成测试")
 class OrderControllerTest {
     private static final String IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
@@ -189,6 +191,7 @@ class OrderControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123", roles = "USER")
     @DisplayName("应该返回400错误 - 当地址为空时")
     void shouldReturnBadRequest_whenAddressIsNull() throws Exception {
         // Arrange
@@ -207,6 +210,7 @@ class OrderControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123", roles = "USER")
     @DisplayName("应该返回400错误 - 当街道地址为空时")
     void shouldReturnBadRequest_whenStreetIsBlank() throws Exception {
         // Arrange

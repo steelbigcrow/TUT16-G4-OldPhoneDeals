@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -64,7 +63,6 @@ public class OrderController {
      * @return 订单响应对象
      */
     @PostMapping("/checkout")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
             @Valid @RequestBody CheckoutRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey
@@ -105,7 +103,6 @@ public class OrderController {
      * @return 包含订单列表和分页信息的响应
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderPageResponse>> getCurrentUserOrders(
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "pageSize", defaultValue = "10") int pageSize
@@ -137,7 +134,6 @@ public class OrderController {
      * @return 订单列表
      */
     @GetMapping("/user/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getUserOrders(
             @PathVariable String userId
     ) {
@@ -172,7 +168,6 @@ public class OrderController {
      * @return 订单响应对象
      */
     @GetMapping("/{orderId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(
             @PathVariable String orderId
     ) {

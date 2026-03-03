@@ -6,7 +6,6 @@ import com.oldphonedeals.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -81,7 +80,6 @@ public class FileUploadController {
    * @throws com.oldphonedeals.exception.FileStorageException 如果文件存储失败
    */
   @PostMapping("/image")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<FileUploadResponse>> uploadImage(
       @RequestParam("file") MultipartFile file
   ) {

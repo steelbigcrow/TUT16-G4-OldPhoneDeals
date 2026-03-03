@@ -15,7 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -103,7 +102,6 @@ public class ReviewController {
    * 添加评论（需要登录并且满足业务规则）
    */
   @PostMapping("/{phoneId}/reviews")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<ReviewResponse>> addReview(
       @PathVariable String phoneId,
       @Valid @RequestBody ReviewCreateRequest request
@@ -120,7 +118,6 @@ public class ReviewController {
    * 切换评论可见性（评论者或卖家）
    */
   @PatchMapping("/{phoneId}/reviews/{reviewId}/visibility")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<ReviewResponse>> toggleReviewVisibility(
       @PathVariable String phoneId,
       @PathVariable String reviewId,
@@ -147,7 +144,6 @@ public class ReviewController {
    * 在 Spring 版本中，sellerId 由当前登录用户自动推断。
    */
   @GetMapping("/reviews/by-seller")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<List<SellerReviewResponse>>> getReviewsBySeller() {
     String sellerId = SecurityContextHelper.getCurrentUserId();
     log.info("GET /api/phones/reviews/by-seller - sellerId={}", sellerId);
