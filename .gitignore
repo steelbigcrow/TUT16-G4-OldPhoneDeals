@@ -32,8 +32,9 @@ dist/
 build/
 out/
 
-# Angular 特定
+# 前端构建缓存
 /.angular/cache
+.vite/
 
 # MongoDB
 /data/db/
@@ -86,8 +87,6 @@ Desktop.ini
 # 排除开发用的数据文件（根据实际情况调整）
 /dataset_dev/
 /public/uploads/
-AngularOldPhoneDeals/pnpm-lock.yaml
-server/pnpm-lock.yaml
 
 # Agent相关
 .claude

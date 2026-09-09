@@ -27,10 +27,6 @@ import java.util.UUID;
  * - GET /api/orders/{orderId} - 获取订单详情
  * </p>
  * 
- * 参考 Express.js 实现：
- * - server/app/routes/order.routes.js
- * - server/app/controllers/order.controller.js
- * 
  * @author OldPhoneDeals Team
  */
 @Slf4j
@@ -56,8 +52,6 @@ public class OrderController {
      * 5. 扣减库存
      * 6. 增加销售计数
      * 7. 清空购物车
-     * 
-     * 参考：server/app/controllers/order.controller.js:11-82
      * 
      * @param request 结账请求（包含收货地址）
      * @return 订单响应对象
@@ -128,8 +122,6 @@ public class OrderController {
      * 
      * 按创建时间降序排序
      * 
-     * 参考：server/app/controllers/order.controller.js:88-124
-     * 
      * @param userId 用户ID
      * @return 订单列表
      */
@@ -161,8 +153,6 @@ public class OrderController {
      * GET /api/orders/{orderId}
      * 需要认证，只能查看自己的订单
      * </p>
-     * 
-     * 参考：server/app/controllers/order.controller.js:130-155
      * 
      * @param orderId 订单ID
      * @return 订单响应对象

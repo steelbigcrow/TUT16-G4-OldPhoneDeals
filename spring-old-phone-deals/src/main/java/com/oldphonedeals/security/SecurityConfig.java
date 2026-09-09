@@ -118,8 +118,6 @@ public class SecurityConfig {
 
     configuration.setAllowedOrigins(Arrays.asList(
         frontendUrl,
-        "http://localhost:4200",
-        "http://localhost:3000",
         "https://oldphonedeals.com"
     ));
 

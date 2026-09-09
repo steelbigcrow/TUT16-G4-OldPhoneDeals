@@ -5,26 +5,31 @@
 ## 技术栈概览
 
 - **框架**: Spring Boot 3.2.0
-- **JDK**: 17
+- **JDK**: 21
 - **数据库**: MongoDB
 - **安全**: Spring Security + JWT
+- **消息队列**: RabbitMQ（邮件投递、订单后置处理、Saga 补偿）
 - **构建工具**: Maven
 - **主要依赖**:
   - Spring Data MongoDB
   - Spring Boot Validation
   - Spring Boot Mail (SendGrid)
+  - Spring Boot AMQP (RabbitMQ)
   - Lombok
   - MapStruct
   - jjwt (JWT 库)
+  - Testcontainers + Awaitility（集成 / E2E 测试）
 
 ## 环境准备
 
 ### 前置条件
 
-- JDK 17（确保 `java -version` 为 17）
+- JDK 21（确保 `java -version` 为 21）
 - MongoDB 4.0+
+- RabbitMQ 3.x+
 - Maven 3.6+
 - SendGrid API Key（用于发送邮件）
+- Docker（仅运行集成 / E2E 测试时需要）
 
 ### 1. 克隆并进入项目
 
@@ -57,8 +62,14 @@ FROM_EMAIL=noreply@oldphonedeals.com
 # 前端 URL（本地开发时指向 React Vite 服务）
 FRONTEND_URL=http://localhost:5173
 
-# 运行环境(development/production)
-NODE_ENV=development
+# RabbitMQ 配置
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USERNAME=guest
+RABBITMQ_PASSWORD=guest
+
+# Spring Profile(development/production)
+SPRING_PROFILES_ACTIVE=dev
 ```
 
 Note: `.env` is loaded via Spring Boot config import (see `src/main/resources/application.yml`).
@@ -91,10 +102,10 @@ java -jar target/spring-old-phone-deals-1.0.0.jar
 
 ### 5. 健康检查
 
-启动后可以通过以下命令快速检查：
+启动后可通过公开的商品列表接口快速验证服务是否正常：
 
 ```bash
-curl http://localhost:8080/api/test
+curl http://localhost:8080/api/phones
 ```
 
 ## 项目结构
@@ -105,26 +116,38 @@ src/main/java/com/oldphonedeals/
 ├── config/                        # 配置
 │   ├── SecurityConfig.java        # Spring Security 配置
 │   ├── CorsConfig.java            # CORS 配置
+│   ├── RabbitMQConfig.java        # RabbitMQ 交换机/队列/绑定
 │   └── ...
 ├── entity/                        # 实体类（MongoDB 文档）
 │   ├── User.java
 │   ├── Phone.java
+│   ├── Order.java
+│   ├── SagaLog.java               # Saga 补偿审计
 │   └── ...
 ├── dto/                           # 数据传输对象
 │   ├── request/                   # 请求 DTO
-│   └── response/                  # 响应 DTO
+│   ├── response/                  # 响应 DTO
+│   └── message/                   # MQ 消息体
 ├── repository/                    # 仓储接口
 ├── service/                       # 业务逻辑
 │   └── impl/                      # 实现类
 ├── controller/                    # REST 控制器
 │   └── admin/                     # 管理员相关接口
+├── producer/                      # RabbitMQ 生产者
+├── consumer/                      # RabbitMQ 消费者与 Saga 编排
 ├── security/                      # 安全与认证
 │   ├── JwtAuthenticationFilter.java
-│   └── JwtTokenProvider.java
+│   ├── JwtTokenProvider.java
+│   └── UserPrincipal.java
 ├── exception/                     # 全局异常处理
 ├── mapper/                        # MapStruct 映射
 └── util/                          # 工具类
 ```
+
+详细设计文档见 `docs/`：
+- `docs/mq-integration-plan.md` —— RabbitMQ 集成改造规划
+- `docs/mq-test-plan.md` —— MQ 测试体系规划
+- `docs/saga-compensation-plan.md` —— Saga 自动补偿机制规划
 
 ## 认证与调用约定
 
@@ -270,31 +293,38 @@ curl -X POST http://localhost:8080/api/auth/login \
 - `users` — 用户信息
 - `phones` — 商品信息（内嵌 reviews）
 - `carts` — 购物车（关联用户和商品）
-- `orders` — 订单（含订单项与地址）
+- `orders` — 订单（含订单项、地址、结账与后置处理状态）
 - `adminlogs` — 管理员操作日志
+- `saga_logs` — Saga 补偿审计日志
+- `processed_messages` — 消息幂等记录
 
 ### 常用索引
 
 - `users.email` — 用户邮箱唯一索引
-- `users.firstName + lastName` — 组合文本搜索
-- `phones.seller` — 按卖家查询
-- `carts.userId` — 用户购物车查找
-- `orders.userId` — 用户订单查找
+- `users.role` — 角色索引
+- `carts.userId` — 用户购物车唯一索引
+- `orders.userId + idempotencyKey` — 结账幂等唯一索引（部分索引）
+- `saga_logs.sagaId` — Saga 实例唯一索引
+- `processed_messages.messageId` — 消息幂等唯一索引
+
+完整字段说明见仓库根目录的 `MongoDB Database Structure.md`。
 
 ## 测试与覆盖率
 
 ```bash
-# 运行全部测试
+# 运行全部单元测试
 mvn test
 
 # 仅运行某个测试类
-mvn test -Dtest=UserServiceTest
+mvn test -Dtest=OrderServiceTest
 
 # 生成 Jacoco 覆盖率报告
 mvn test jacoco:report
 ```
 
 报告输出在 `target/site/jacoco/index.html`。
+
+集成测试（`*IT`）与 E2E 测试（`*E2E`）基于 Testcontainers 启动 MongoDB / RabbitMQ 容器，需要本地 Docker 环境。
 
 ## 构建与部署
 
@@ -309,7 +339,7 @@ mvn clean package -DskipTests
 ### Docker 示例（可选）
 
 ```dockerfile
-FROM openjdk:17-slim
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY target/spring-old-phone-deals-1.0.0.jar app.jar
 EXPOSE 8080
@@ -329,10 +359,12 @@ docker run -p 8080:8080 --env-file .env old-phone-deals-backend
 
 集中管理：
 - MongoDB 连接
+- RabbitMQ 连接与重试 / DLQ 策略
 - JWT 配置（密钥、过期时间）
 - 邮件服务
 - 日志
 - CORS 允许的前端 URL
+- E2E 测试开关与 Mongo 事务开关
 
 ### application-dev.yml
 
@@ -340,6 +372,7 @@ docker run -p 8080:8080 --env-file .env old-phone-deals-backend
 - 本地端口（8080）
 - 开发日志级别
 - 本地上传目录
+- 开发库 MongoDB URI
 
 ### application-prod.yml
 
@@ -403,9 +436,9 @@ A: 确认 `frontend.url` 或 `FRONTEND_URL` 环境变量与前端实际访问 UR
 ## 相关文档
 
 - **系统名称**: Old Phone Deals
-- **架构设计**: 详见 [ARCHITECTURE_DESIGN.md](./ARCHITECTURE_DESIGN.md)
-- **API 详情**: 可补充 [API_MAPPING.md](./API_MAPPING.md)
+- **数据库结构**: 详见仓库根目录的 [MongoDB Database Structure.md](../MongoDB%20Database%20Structure.md)
+- **MQ 集成 / 测试 / Saga 补偿设计**: 见 `docs/` 目录
 
 ## 维护说明
 
-欢迎在本项目基础上继续扩展功能，保持与前端（Angular 或 React 版本）API 一致。
+欢迎在本项目基础上继续扩展功能，保持与前端（`react-frontend/`）API 一致。

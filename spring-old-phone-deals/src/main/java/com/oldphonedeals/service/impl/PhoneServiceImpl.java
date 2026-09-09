@@ -43,8 +43,6 @@ import java.util.stream.Collectors;
  * 手机商品业务服务实现
  * 第1部分：实现基础CRUD功能
  * 
- * 参考 Express.js 实现：
- * - server/app/controllers/phone.controller.js
  */
 @Slf4j
 @Service
@@ -70,7 +68,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 创建手机商品
-   * 参考：server/app/controllers/phone.controller.js:11-60
    * 
    * @param request 创建请求
    * @param sellerId 卖家ID（从JWT获取）
@@ -109,7 +106,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 更新手机商品
-   * 参考：server/app/controllers/phone.controller.js:62-104
    * 
    * @param phoneId 商品ID
    * @param request 更新请求
@@ -183,7 +179,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 删除手机商品
-   * 参考：server/app/controllers/phone.controller.js:106-133
    * 
    * @param phoneId 商品ID
    * @param sellerId 卖家ID（从JWT获取）
@@ -239,7 +234,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 获取单个商品详情
-   * 参考：server/app/controllers/phone.controller.js:135-176
    *
    * @param phoneId 商品ID
    * @param currentUserId 当前用户ID（可选）
@@ -286,7 +280,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 获取所有商品（分页）
-   * 参考：server/app/controllers/phone.controller.js:178-234
    * 
    * @param search 搜索关键词
    * @param brand 品牌过滤
@@ -368,7 +361,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 获取低库存商品
-   * 参考：server/app/controllers/phone.controller.js:56-64
    *
    * @return 低库存商品列表（最多6个）
    */
@@ -388,7 +380,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 获取畅销商品
-   * 参考：server/app/controllers/phone.controller.js:66-98
    *
    * 实现逻辑：
    * 1. 筛选至少有2条评论的未禁用商品
@@ -433,7 +424,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 启用/禁用商品
-   * 参考：server/app/controllers/phone.controller.js:546-584
    *
    * @param phoneId 商品ID
    * @param isDisabled 是否禁用
@@ -486,7 +476,6 @@ public class PhoneServiceImpl implements PhoneService {
 
   /**
    * 获取卖家的所有商品
-   * 参考：server/app/controllers/phone.controller.js:486-514
    *
    * @param sellerId 卖家ID
    * @return 该卖家的所有商品列表

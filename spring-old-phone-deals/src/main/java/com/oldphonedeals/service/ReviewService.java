@@ -11,8 +11,6 @@ import java.util.List;
  * 评论业务服务接口
  * 处理商品评论的创建、更新、删除和可见性控制
  * 
- * 参考 Express.js 实现：
- * - server/app/controllers/phone.controller.js:236-480
  */
 public interface ReviewService {
 
@@ -23,8 +21,6 @@ public interface ReviewService {
    * 1. 用户必须已购买该商品才能评论（查询Order集合验证）
    * 2. 用户不能评论自己的商品
    * 3. 每个用户对每个商品只能评论一次
-   * 
-   * 参考：server/app/controllers/phone.controller.js:318-398
    * 
    * @param phoneId 商品ID
    * @param request 评论请求
@@ -41,8 +37,6 @@ public interface ReviewService {
    * 权限规则：
    * - 评论作者可以隐藏/显示自己的评论
    * - 商品卖家可以隐藏/显示其商品的任何评论
-   * 
-   * 参考：server/app/controllers/phone.controller.js:404-480
    * 
    * @param phoneId 商品ID
    * @param reviewId 评论ID
@@ -80,8 +74,6 @@ public interface ReviewService {
    *   2. 自己的隐藏评论
    *   3. 作为卖家时，自己商品的所有隐藏评论
    * 
-   * 参考：server/app/controllers/phone.controller.js:162-177
-   * 
    * @param reviews 原始评论列表
    * @param currentUserId 当前用户ID（可为null表示未登录）
    * @param sellerId 商品卖家ID
@@ -93,7 +85,6 @@ public interface ReviewService {
    * 获取某个卖家所有商品收到的评论
    *
    * 对应 Express.js 中 seller 查看自己所有手机评论的接口：
-   * server/app/controllers/phone.controller.js:getPhonesReviewsByUserID
    *
    * @param sellerId 卖家用户 ID
    * @return 该卖家所有商品的评论列表

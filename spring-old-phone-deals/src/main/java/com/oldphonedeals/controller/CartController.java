@@ -22,10 +22,6 @@ import org.springframework.web.bind.annotation.*;
  * - DELETE /api/cart/{phoneId} - 从购物车删除商品
  * </p>
  * 
- * 参考 Express.js 实现：
- * - server/app/routes/cart.routes.js
- * - server/app/controllers/cart.controller.js
- * 
  * @author OldPhoneDeals Team
  */
 @Slf4j
@@ -42,8 +38,6 @@ public class CartController {
      * GET /api/cart
      * 需要认证
      * </p>
-     * 
-     * 参考：server/app/controllers/cart.controller.js:11-63
      * 
      * @return 购物车响应对象，包含商品列表及增强信息（评分、卖家等）
      */
@@ -71,8 +65,6 @@ public class CartController {
      * - 验证库存充足
      * - 如果商品已在购物车中，更新数量
      * - 如果是新商品，添加到购物车
-     * 
-     * 参考：server/app/controllers/cart.controller.js:69-120
      * 
      * @param request 添加到购物车请求（phoneId, quantity）
      * @return 更新后的购物车响应对象
@@ -104,8 +96,6 @@ public class CartController {
      * - 验证新数量不超过库存
      * - 更新数量
      * 
-     * 参考：server/app/controllers/cart.controller.js:126-168
-     * 
      * @param phoneId 商品ID
      * @param request 更新购物车商品请求（quantity）
      * @return 更新后的购物车响应对象
@@ -135,8 +125,6 @@ public class CartController {
      * 
      * 业务逻辑：
      * - 从购物车items数组中移除指定商品
-     * 
-     * 参考：server/app/controllers/cart.controller.js:174-203
      * 
      * @param phoneId 商品ID
      * @return 更新后的购物车响应对象

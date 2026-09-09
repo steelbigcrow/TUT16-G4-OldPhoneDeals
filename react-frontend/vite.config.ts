@@ -24,5 +24,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    // e2e/ 下的规格由 Playwright 运行，不能被 Vitest 收集
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 })

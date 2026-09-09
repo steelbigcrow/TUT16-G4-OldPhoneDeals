@@ -14,9 +14,6 @@ import java.util.Map;
  * 手机商品业务服务接口
  * 提供商品查询、创建、更新、删除等核心业务逻辑
  * 
- * 参考 Express.js 实现：
- * - server/app/controllers/phone.controller.js
- * - server/app/controllers/adminPhone.controller.js
  */
 public interface PhoneService {
 

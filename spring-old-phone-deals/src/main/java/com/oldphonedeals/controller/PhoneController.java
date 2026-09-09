@@ -27,9 +27,6 @@ import java.util.Map;
  * 手机商品控制器
  * 第1部分：实现基础CRUD端点
  * 
- * 参考 Express.js 实现：
- * - server/app/routes/phone.routes.js
- * - server/app/controllers/phone.controller.js
  */
 @Slf4j
 @RestController
@@ -43,9 +40,6 @@ public class PhoneController {
    * 创建手机商品
    * POST /api/phones
    * 需要认证
-   * 
-   * 参考：server/app/routes/phone.routes.js:5
-   *      server/app/controllers/phone.controller.js:11-60
    * 
    * @param request 创建请求
    * @return 新创建的商品信息
@@ -71,9 +65,6 @@ public class PhoneController {
    * 更新手机商品
    * PUT /api/phones/{phoneId}
    * 需要认证，只有商品的seller可以更新
-   * 
-   * 参考：server/app/routes/phone.routes.js:6
-   *      server/app/controllers/phone.controller.js:62-104
    * 
    * @param phoneId 商品ID
    * @param request 更新请求
@@ -102,9 +93,6 @@ public class PhoneController {
    * DELETE /api/phones/{phoneId}
    * 需要认证，只有商品的seller可以删除
    * 
-   * 参考：server/app/routes/phone.routes.js:7
-   *      server/app/controllers/phone.controller.js:106-133
-   * 
    * @param phoneId 商品ID
    * @return 删除成功消息
    */
@@ -128,8 +116,6 @@ public class PhoneController {
   /**
    * ??/????
    * PUT /api/phones/{phoneId}/disable
-   *
-   * ??:server/app/controllers/phone.controller.js:546-584
    *
    * @param phoneId ??ID
    * @param request ??????
@@ -158,9 +144,6 @@ public class PhoneController {
    * GET /api/phones/{phoneId}
    * 公开访问
    * 
-   * 参考：server/app/routes/phone.routes.js:9
-   *      server/app/controllers/phone.controller.js:135-176
-   * 
    * @param phoneId 商品ID
    * @return 商品详情
    */
@@ -185,9 +168,6 @@ public class PhoneController {
    * 获取所有商品（支持分页和排序）
    * GET /api/phones
    * 公开访问
-   *
-   * 参考：server/app/routes/phone.routes.js:8
-   *      server/app/controllers/phone.controller.js:178-234
    *
    * @param search 搜索关键词（可选）
    * @param brand 品牌过滤（可选）
@@ -248,9 +228,6 @@ public class PhoneController {
    * 获取卖家的所有商品
    * GET /api/phones/by-seller/{sellerId}
    * 公开访问
-   *
-   * 参考：server/app/routes/phone.routes.js
-   *      server/app/controllers/phone.controller.js:486-514
    *
    * @param sellerId 卖家ID
    * @return 该卖家的所有商品列表

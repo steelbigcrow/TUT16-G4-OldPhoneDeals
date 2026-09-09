@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 
 /**
  * 评论业务服务实现
- * 参考 Express.js 实现：server/app/controllers/phone.controller.js:236-480
  */
 @Slf4j
 @Service
@@ -43,7 +42,6 @@ public class ReviewServiceImpl implements ReviewService {
 
   /**
    * 添加评论
-   * 参考：server/app/controllers/phone.controller.js:318-398
    */
   @Override
   @Transactional
@@ -120,7 +118,6 @@ public class ReviewServiceImpl implements ReviewService {
 
   /**
    * 切换评论可见性
-   * 参考：server/app/controllers/phone.controller.js:404-480
    */
   @Override
   @Transactional
@@ -209,7 +206,6 @@ public class ReviewServiceImpl implements ReviewService {
 
   /**
    * 过滤评论可见性
-   * 参考：server/app/controllers/phone.controller.js:162-177, 258-274
    */
   @Override
   public List<ReviewResponse> filterVisibleReviews(List<Phone.Review> reviews, String currentUserId, String sellerId) {
